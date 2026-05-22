@@ -51,6 +51,19 @@ canvas.addEventListener('touchstart', handleTouch, { passive: false });
 canvas.addEventListener('touchmove', handleTouch, { passive: false });
 canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
 
+// 모바일: UI 오버레이/스코어 화면 위에서도 탭으로 게임 시작 가능하게
+uiOverlay.addEventListener('click', () => { if (gameState === STATE.TITLE) startGame(); });
+uiOverlay.addEventListener('touchend', (e) => { e.preventDefault(); if (gameState === STATE.TITLE) startGame(); }, { passive: false });
+document.getElementById('score-screen').addEventListener('click', (e) => {
+    if (e.target.id === 'player-name' || e.target.id === 'save-score-btn') return;
+    if (gameState === STATE.GAMEOVER) startGame();
+});
+document.getElementById('score-screen').addEventListener('touchend', (e) => {
+    if (e.target.id === 'player-name' || e.target.id === 'save-score-btn') return;
+    e.preventDefault();
+    if (gameState === STATE.GAMEOVER) startGame();
+}, { passive: false });
+
 function handleTouch(e) {
     e.preventDefault();
     if (gameState === STATE.TITLE) { startGame(); return; }

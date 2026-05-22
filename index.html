@@ -93,7 +93,7 @@
         <div id="name-input-area" style="margin-bottom:12px;">
             <input id="player-name" type="text" maxlength="8" placeholder="이름 입력"
                 style="background:#111; border:2px solid #0ff; color:#0ff; padding:6px 10px; font-size:14px; text-align:center; font-family:'Courier New',monospace; width:130px; border-radius:4px;">
-            <button id="save-score-btn" onclick="saveScore()"
+            <button id="save-score-btn" onclick="saveScore()" ontouchend="event.preventDefault(); saveScore();"
                 style="background:#0ff; color:#000; border:none; padding:6px 14px; font-size:13px; font-family:'Courier New',monospace; cursor:pointer; border-radius:4px; margin-left:4px; font-weight:bold;">저장</button>
         </div>
         <div style="display:flex; gap:8px; justify-content:center;">
@@ -108,8 +108,8 @@
         </div>
         <p style="color:#0ff; margin-top:12px; animation:blink 1s infinite; font-size:13px;">TAP OR PRESS SPACE TO RESTART</p>
     </div>
-    <div id="mute-btn" onclick="toggleMute()">🔊</div>
-    <div id="pause-btn" onclick="togglePause()">⏸</div>
+    <div id="mute-btn" onclick="toggleMute()" ontouchend="event.preventDefault(); toggleMute();">🔊</div>
+    <div id="pause-btn" onclick="togglePause()" ontouchend="event.preventDefault(); togglePause();">⏸</div>
     <script src="sound.js"></script>
     <script src="game.js"></script>
 </body>
