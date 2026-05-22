@@ -9,13 +9,41 @@ const uiOverlay = document.getElementById('ui-overlay');
 
 let W, H;
 function resizeCanvas() {
-    const ratio = 640 / 480;
-    if (window.innerWidth / window.innerHeight < ratio) { W = window.innerWidth; H = W / ratio; }
-    else { H = window.innerHeight; W = H * ratio; }
-    canvas.width = W; canvas.height = H;
+    // 모바일: 화면 전체를 채움 (가로 모드 기준)
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W;
+    canvas.height = H;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => { setTimeout(resizeCanvas, 100); });
+document.addEventListener('fullscreenchange', () => { setTimeout(resizeCanvas, 100); });
+document.addEventListener('webkitfullscreenchange', () => { setTimeout(resizeCanvas, 100); });
+
+// 전체화면 + 가로 잠금
+function goFullscreen() {
+    const el = document.documentElement;
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (rfs) {
+        rfs.call(el).then(() => {
+            // 화면 방향을 가로로 잠금
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(() => {});
+            }
+            setTimeout(resizeCanvas, 200);
+        }).catch(() => {});
+    }
+}
+
+// 게임 시작 시 자동으로 전체화면 시도 (모바일)
+function tryFullscreenOnStart() {
+    if (isMobile && !document.fullscreenElement && !document.webkitFullscreenElement) {
+        goFullscreen();
+    }
+}
 
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window);
 
@@ -138,6 +166,7 @@ initStars();
 // ============================================
 function startGame() {
     sfx.init(); sfx.resume(); sfx.stopBGM(); sfx.gameStart();
+    tryFullscreenOnStart();
     gameState = STATE.PLAYING;
     uiOverlay.style.display = 'none';
     hideScoreScreen();
