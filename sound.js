@@ -38,6 +38,11 @@ class SoundEngine {
 
     resume() {
         if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+        // AudioContext가 closed 상태면 새로 생성
+        if (this.ctx && this.ctx.state === 'closed') {
+            this.initialized = false;
+            this.init();
+        }
     }
 
     // ============================================
@@ -87,8 +92,14 @@ class SoundEngine {
     // ============================================
     // 톤 생성 유틸리티
     // ============================================
+    ensureContext() {
+        if (!this.initialized || this.muted) return false;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        return true;
+    }
+
     playTone(freq, dur, type = 'square', vol = 0.3, delay = 0) {
-        if (!this.initialized || this.muted) return;
+        if (!this.ensureContext()) return;
         const c = this.ctx, now = c.currentTime + delay;
         const o = c.createOscillator(), g = c.createGain();
         o.type = type;
@@ -101,7 +112,7 @@ class SoundEngine {
     }
 
     playSlide(f1, f2, dur, type = 'square', vol = 0.3) {
-        if (!this.initialized || this.muted) return;
+        if (!this.ensureContext()) return;
         const c = this.ctx, now = c.currentTime;
         const o = c.createOscillator(), g = c.createGain();
         o.type = type;
@@ -114,7 +125,7 @@ class SoundEngine {
     }
 
     playNoise(dur, vol = 0.25) {
-        if (!this.initialized || this.muted) return;
+        if (!this.ensureContext()) return;
         const c = this.ctx, now = c.currentTime;
         const buf = c.createBuffer(1, c.sampleRate * dur, c.sampleRate);
         const d = buf.getChannelData(0);
@@ -131,7 +142,7 @@ class SoundEngine {
     }
 
     playPiano(freq, dur, vol = 0.25, delay = 0) {
-        if (!this.initialized || this.muted) return;
+        if (!this.ensureContext()) return;
         const c = this.ctx, now = c.currentTime + delay;
         const v = vol * this.masterVolume;
         const o1 = c.createOscillator();
@@ -165,27 +176,27 @@ class SoundEngine {
     }
     playerHit() { this.playSlide(600, 80, 0.3, 'square', 0.2); this.playNoise(0.2, 0.15); }
     powerUp() {
-        if (!this.initialized || this.muted) return;
+        if (!this.ensureContext()) return;
         [523, 659, 784, 1047].forEach((f, i) => this.playPiano(f, 0.1, 0.2, i * 0.05));
     }
     getCapsule() { this.playSlide(600, 1200, 0.08, 'sine', 0.15); }
     shieldBlock() { this.playSlide(800, 400, 0.07, 'triangle', 0.12); }
     oneUp() {
-        if (!this.initialized || this.muted) return;
+        if (!this.ensureContext()) return;
         [262, 330, 392, 523, 659, 784].forEach((f, i) => this.playPiano(f, 0.12, 0.2, i * 0.06));
     }
     stageClear() {
-        if (!this.initialized || this.muted) return;
+        if (!this.ensureContext()) return;
         [[523,0.15],[659,0.15],[784,0.15],[1047,0.2],[784,0.15],[1047,0.25],[1319,0.35]]
             .reduce((t, [f, d]) => { this.playPiano(f, d, 0.3, t); return t + d * 0.8; }, 0);
     }
     gameStart() {
-        if (!this.initialized || this.muted) return;
+        if (!this.ensureContext()) return;
         [[330,0.1],[330,0.1],[330,0.12],[262,0.1],[330,0.12],[392,0.2]]
             .reduce((t, [f, d]) => { this.playPiano(f, d, 0.25, t); return t + d + 0.02; }, 0);
     }
     bossWarning() {
-        if (!this.initialized || this.muted) return;
+        if (!this.ensureContext()) return;
         for (let i = 0; i < 4; i++) {
             this.playTone(120, 0.15, 'square', 0.2, i * 0.3);
             this.playTone(180, 0.1, 'square', 0.15, i * 0.3 + 0.15);
