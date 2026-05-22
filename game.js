@@ -52,6 +52,10 @@ canvas.addEventListener('touchstart', handleTouch, {passive:false});
 canvas.addEventListener('touchmove', handleTouch, {passive:false});
 canvas.addEventListener('touchend', handleTouchEnd, {passive:false});
 
+let touchStartX = 0;
+let touchCurrentX = 0;
+let touchActive = false;
+
 function handleTouch(e) {
     e.preventDefault();
     if (gameState === STATE.TITLE) { startGame(); return; }
@@ -60,16 +64,22 @@ function handleTouch(e) {
         return;
     }
     if (gameState !== STATE.PLAYING) return;
-    touchLeft = false; touchRight = false;
-    for (let t of e.touches) {
-        const r = canvas.getBoundingClientRect();
-        const x = t.clientX - r.left;
-        if (x < W/2) touchLeft = true; else touchRight = true;
+    const touch = e.touches[0];
+    if (!touchActive) {
+        touchStartX = touch.clientX;
+        touchActive = true;
     }
+    touchCurrentX = touch.clientX;
+    const dx = touchCurrentX - touchStartX;
+    touchLeft = false; touchRight = false;
+    if (dx < -8) touchLeft = true;
+    if (dx > 8) touchRight = true;
+    // 드래그 기준점을 서서히 따라오게 (부드러운 조작)
+    touchStartX += (touchCurrentX - touchStartX) * 0.05;
 }
 function handleTouchEnd(e) {
     e.preventDefault();
-    if (e.touches.length === 0) { touchLeft = false; touchRight = false; }
+    if (e.touches.length === 0) { touchLeft = false; touchRight = false; touchActive = false; }
     else handleTouch(e);
 }
 
@@ -121,7 +131,7 @@ function startGame() {
     playerBullets=[]; enemyBullets=[]; items=[]; particles=[]; damageNumbers=[];
     boss=null;
     spawnWave();
-    setTimeout(()=>sfx.playRandomBGM(), 800);
+    setTimeout(()=>sfx.playStageMusic(stage), 800);
 }
 
 // ============================================
@@ -330,13 +340,11 @@ function updateBoss() {
         enemies.push(mkEnemy(side, 180+Math.random()*60, Math.random()<0.5?'mid':'grunt'));
     }
 
-    // 보스 HP 25% 깎일 때마다 아이템 드롭
-    const hpThresholds = [0.75, 0.5, 0.25];
-    hpThresholds.forEach(th => {
-        if(b.hp === Math.floor(b.maxHp * th)) {
-            dropItem(b.x + (Math.random()-0.5)*40, b.y + 40);
-        }
-    });
+    // 보스 20번 공격당할 때마다 아이템 1개 드롭
+    const hitsReceived = b.maxHp - b.hp;
+    if(hitsReceived > 0 && hitsReceived % 20 === 0 && b.flashTimer === 12) {
+        dropItem(b.x + (Math.random()-0.5)*40, b.y + 40);
+    }
 }
 
 // ============================================
@@ -358,11 +366,20 @@ function updateEnemies() {
             e.x+=Math.sin(e.diveTime*0.06)*3;
             e.y+=e.diveSpeed;
             e.x=Math.max(e.width/2, Math.min(480-e.width/2, e.x));
-            if(e.y < 720*0.8 && Math.random()<0.02) {
+            // 화면 55% 이하에서만 공격
+            if(e.y < 720*0.55 && Math.random()<0.02) {
                 const a=Math.atan2(player.y-e.y,player.x-e.x);
                 enemyBullets.push({x:e.x,y:e.y+e.height/2,vx:Math.cos(a)*3.5,vy:Math.sin(a)*3.5,size:4});
             }
-            if(e.y > player.y+10) { e.diving=false; e.y=e.baseY; }
+            // 70% 이하로 내려오면 공격 중지하고 천천히 복귀
+            if(e.y > 720*0.7) {
+                e.diveSpeed = -2; // 위로 올라감
+            }
+            // 원래 위치 근처로 돌아오면 다이빙 종료
+            if(e.diveSpeed < 0 && e.y <= e.baseY + 10) {
+                e.diving=false;
+                e.y=e.baseY;
+            }
         }
     });
 
@@ -373,7 +390,7 @@ function updateEnemies() {
     }
     // 편대 발사
     if(frame%Math.max(25,55-stage*3)===0) {
-        const s=enemies.filter(e=>e.alive&&!e.diving&&e.entered&&e.y<720*0.8);
+        const s=enemies.filter(e=>e.alive&&!e.diving&&e.entered&&e.y<720*0.55);
         if(s.length>0){const sh=s[Math.floor(Math.random()*s.length)];enemyBullets.push({x:sh.x,y:sh.y+sh.height/2,vx:0,vy:3+stage*0.25,size:4});}
     }
 }
@@ -500,7 +517,7 @@ function updateStageClear() {
     stageClearFireworks.forEach(p=>{p.trail.push({x:p.x,y:p.y});if(p.trail.length>5)p.trail.shift();p.x+=p.vx;p.y+=p.vy;p.vy+=0.05;p.vx*=0.98;p.life--;});
     stageClearFireworks=stageClearFireworks.filter(p=>p.life>0);
     if(stageClearTimer%15===0&&stageClearTimer>10) createFirework(60+Math.random()*360,60+Math.random()*200);
-    if(stageClearTimer<=0){stage++;gameState=STATE.PLAYING;stageClearFireworks=[];sfx.playRandomBGM();spawnWave();}
+    if(stageClearTimer<=0){stage++;gameState=STATE.PLAYING;stageClearFireworks=[];sfx.playStageMusic(stage);spawnWave();}
 }
 
 function createExplosion(x,y,color,count=12) {
@@ -550,11 +567,14 @@ function renderPause() {
 }
 
 function renderGame() {
-    // 플레이어 총알
+    // 플레이어 총알 (레이저 빔)
     playerBullets.forEach(b=>{
-        b.trail.forEach((t,i)=>{ctx.fillStyle=`rgba(0,255,255,${i/b.trail.length*0.4})`;ctx.fillRect(t.x-1.5,t.y-4,3,8);});
-        ctx.shadowColor='#0ff';ctx.shadowBlur=6;ctx.fillStyle='#fff';ctx.fillRect(b.x-2,b.y-7,4,14);
-        ctx.fillStyle='#0ff';ctx.fillRect(b.x-1,b.y-6,2,12);ctx.shadowBlur=0;
+        b.trail.forEach((t,i)=>{ctx.fillStyle=`rgba(0,200,255,${i/b.trail.length*0.3})`;ctx.fillRect(t.x-1,t.y-5,2,10);});
+        ctx.shadowColor='#0ff';ctx.shadowBlur=8;
+        const lg=ctx.createLinearGradient(b.x,b.y-7,b.x,b.y+7);
+        lg.addColorStop(0,'#fff');lg.addColorStop(0.5,'#0ef');lg.addColorStop(1,'#06a');
+        ctx.fillStyle=lg;ctx.fillRect(b.x-2,b.y-7,4,14);
+        ctx.shadowBlur=0;
     });
 
     // 적
@@ -563,11 +583,15 @@ function renderGame() {
     // 보스
     if(boss && boss.alive) drawBoss();
 
-    // 적 총알
+    // 적 총알 (에너지 볼트)
     enemyBullets.forEach(b=>{
-        ctx.shadowColor='#f44';ctx.shadowBlur=5;ctx.fillStyle='#f44';
-        ctx.beginPath();ctx.arc(b.x,b.y,b.size,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle='#ff8';ctx.beginPath();ctx.arc(b.x,b.y,b.size*0.4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+        ctx.shadowColor='#f44';ctx.shadowBlur=6;
+        const grad=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.size);
+        grad.addColorStop(0,'#fff');grad.addColorStop(0.4,'#f84');grad.addColorStop(1,'rgba(255,0,0,0)');
+        ctx.fillStyle=grad;
+        ctx.beginPath();ctx.arc(b.x,b.y,b.size+2,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#f44';ctx.beginPath();ctx.arc(b.x,b.y,b.size*0.6,0,Math.PI*2);ctx.fill();
+        ctx.shadowBlur=0;
     });
 
     // 아이템
@@ -620,39 +644,97 @@ function renderStageClear() {
 // ============================================
 function drawPlayer() {
     ctx.save();ctx.translate(player.x,player.y);
-    // 엔진
-    const fh=5+Math.random()*5;
-    const g=ctx.createLinearGradient(0,16,0,16+fh);g.addColorStop(0,'#fff');g.addColorStop(0.3,'#0ff');g.addColorStop(1,'transparent');
-    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-4,16);ctx.lineTo(0,16+fh);ctx.lineTo(4,16);ctx.closePath();ctx.fill();
-    // 본체
-    ctx.fillStyle='#0cf';ctx.shadowColor='#0cf';ctx.shadowBlur=5;
-    ctx.beginPath();ctx.moveTo(0,-18);ctx.lineTo(-5,-8);ctx.lineTo(-8,4);ctx.lineTo(-5,10);ctx.lineTo(-3,16);ctx.lineTo(3,16);ctx.lineTo(5,10);ctx.lineTo(8,4);ctx.lineTo(5,-8);ctx.closePath();ctx.fill();
-    // 날개
-    ctx.fillStyle='#08a';ctx.beginPath();ctx.moveTo(-8,2);ctx.lineTo(-18,12);ctx.lineTo(-14,14);ctx.lineTo(-6,10);ctx.closePath();ctx.fill();
-    ctx.beginPath();ctx.moveTo(8,2);ctx.lineTo(18,12);ctx.lineTo(14,14);ctx.lineTo(6,10);ctx.closePath();ctx.fill();
-    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,-4,2.5,0,Math.PI*2);ctx.fill();
-    if(player.bulletLevel>=3){ctx.fillStyle='#ff0';ctx.beginPath();ctx.arc(-16,12,2,0,Math.PI*2);ctx.arc(16,12,2,0,Math.PI*2);ctx.fill();}
+    // 엔진 글로우 (네온 블루 제트)
+    const fh=8+Math.random()*6;
+    const g=ctx.createLinearGradient(0,14,0,14+fh);
+    g.addColorStop(0,'#fff');g.addColorStop(0.2,'#4df');g.addColorStop(0.6,'#08f');g.addColorStop(1,'transparent');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.moveTo(-5,14);ctx.lineTo(0,14+fh);ctx.lineTo(5,14);ctx.closePath();ctx.fill();
+    // 보조 엔진
+    ctx.beginPath();ctx.moveTo(-12,12);ctx.lineTo(-10,12+fh*0.6);ctx.lineTo(-8,12);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(8,12);ctx.lineTo(10,12+fh*0.6);ctx.lineTo(12,12);ctx.closePath();ctx.fill();
+
+    // 본체 (미래형 전투기 - 각진 스텔스 디자인)
+    ctx.shadowColor='#0af';ctx.shadowBlur=8;
+    ctx.fillStyle='#1a2a3a';
+    ctx.beginPath();
+    ctx.moveTo(0,-20);ctx.lineTo(-4,-12);ctx.lineTo(-7,-2);ctx.lineTo(-6,8);ctx.lineTo(-4,14);
+    ctx.lineTo(4,14);ctx.lineTo(6,8);ctx.lineTo(7,-2);ctx.lineTo(4,-12);ctx.closePath();ctx.fill();
+
+    // 외장 아머 (밝은 라인)
+    ctx.strokeStyle='#0cf';ctx.lineWidth=1.2;
+    ctx.beginPath();ctx.moveTo(0,-20);ctx.lineTo(-4,-12);ctx.lineTo(-7,-2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,-20);ctx.lineTo(4,-12);ctx.lineTo(7,-2);ctx.stroke();
+
+    // 날개 (삼각 델타윙)
+    ctx.fillStyle='#0a1a2a';
+    ctx.beginPath();ctx.moveTo(-7,0);ctx.lineTo(-22,10);ctx.lineTo(-18,12);ctx.lineTo(-6,8);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(22,10);ctx.lineTo(18,12);ctx.lineTo(6,8);ctx.closePath();ctx.fill();
+    // 날개 네온 라인
+    ctx.strokeStyle='#08f';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(-7,0);ctx.lineTo(-22,10);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(22,10);ctx.stroke();
+
+    // 콕핏 (홀로그램 블루)
+    const cg=ctx.createRadialGradient(0,-6,0,0,-6,5);
+    cg.addColorStop(0,'#8ef');cg.addColorStop(0.7,'#06a');cg.addColorStop(1,'#024');
+    ctx.fillStyle=cg;
+    ctx.beginPath();ctx.ellipse(0,-6,3.5,5,0,0,Math.PI*2);ctx.fill();
+
+    // 파워 레벨 표시 (윙팁 에너지)
+    if(player.bulletLevel>=3){
+        ctx.fillStyle=`hsl(${frame*3%360},100%,70%)`;
+        ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=6;
+        ctx.beginPath();ctx.arc(-20,10,2.5,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(20,10,2.5,0,Math.PI*2);ctx.fill();
+    }
     ctx.shadowBlur=0;ctx.restore();
 }
 
 function drawEnemy(e) {
     ctx.save();ctx.translate(e.x,e.y);
-    const pulse=Math.sin(frame*0.08+e.baseX)*0.07+1, flash=e.flashTimer>0;
+    const pulse=Math.sin(frame*0.08+e.baseX)*0.06+1, flash=e.flashTimer>0;
     ctx.scale(pulse,pulse);
+
     if(e.type==='boss_e'){
-        ctx.fillStyle=flash?'#fff':(e.hp>e.maxHp/2?'#f0f':'#f88');ctx.shadowColor='#f0f';ctx.shadowBlur=6;
-        ctx.beginPath();ctx.moveTo(0,-14);ctx.bezierCurveTo(-8,-14,-16,-6,-16,2);ctx.bezierCurveTo(-16,10,-10,14,-4,10);ctx.lineTo(0,6);ctx.lineTo(4,10);ctx.bezierCurveTo(10,14,16,10,16,2);ctx.bezierCurveTo(16,-6,8,-14,0,-14);ctx.fill();
-        ctx.fillStyle='#ff0';ctx.beginPath();ctx.arc(-4,-2,2,0,Math.PI*2);ctx.arc(4,-2,2,0,Math.PI*2);ctx.fill();
-        if(e.maxHp>1){ctx.fillStyle='#333';ctx.fillRect(-10,15,20,2.5);ctx.fillStyle='#0f0';ctx.fillRect(-10,15,20*(e.hp/e.maxHp),2.5);}
+        // SF 드론 - 육각형 + 홀로그램 코어
+        ctx.fillStyle=flash?'#fff':'#2a0a3a';
+        ctx.shadowColor='#f0f';ctx.shadowBlur=8;
+        ctx.beginPath();
+        for(let i=0;i<6;i++){const a=Math.PI/3*i-Math.PI/2;ctx.lineTo(Math.cos(a)*14,Math.sin(a)*14);}
+        ctx.closePath();ctx.fill();
+        // 내부 에너지 코어
+        ctx.fillStyle=flash?'#fff':`hsl(${280+Math.sin(frame*0.1)*20},100%,60%)`;
+        ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);ctx.fill();
+        // 회전하는 링
+        ctx.strokeStyle='rgba(200,0,255,0.5)';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.ellipse(0,0,12,5,frame*0.03,0,Math.PI*2);ctx.stroke();
+        // HP바
+        if(e.maxHp>1){ctx.fillStyle='#333';ctx.fillRect(-10,16,20,2.5);ctx.fillStyle='#f0f';ctx.fillRect(-10,16,20*(e.hp/e.maxHp),2.5);}
     } else if(e.type==='mid'){
-        ctx.fillStyle=flash?'#fff':'#f80';ctx.shadowColor='#f80';ctx.shadowBlur=5;
-        ctx.beginPath();ctx.arc(0,0,10,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle=flash?'#ff8':'#ff0';ctx.fillRect(-9,-2,18,4);
-        ctx.fillStyle='rgba(255,180,0,0.6)';ctx.beginPath();ctx.ellipse(-11,-3,6,3.5,-0.3,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(11,-3,6,3.5,0.3,0,Math.PI*2);ctx.fill();
+        // SF 중형기 - 다이아몬드 + 에너지 날개
+        ctx.fillStyle=flash?'#fff':'#1a1a0a';
+        ctx.shadowColor='#f80';ctx.shadowBlur=6;
+        ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(-10,0);ctx.lineTo(0,12);ctx.lineTo(10,0);ctx.closePath();ctx.fill();
+        // 에너지 날개
+        ctx.strokeStyle=flash?'#fff':'#f80';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(-10,0);ctx.lineTo(-16,-4);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(10,0);ctx.lineTo(16,-4);ctx.stroke();
+        // 중앙 눈
+        ctx.fillStyle=flash?'#fff':'#ff0';
+        ctx.beginPath();ctx.arc(0,0,3,0,Math.PI*2);ctx.fill();
     } else {
-        ctx.fillStyle=flash?'#fff':'#4f4';ctx.shadowColor='#4f4';ctx.shadowBlur=4;
-        ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(-10,3);ctx.lineTo(-6,10);ctx.lineTo(0,6);ctx.lineTo(6,10);ctx.lineTo(10,3);ctx.closePath();ctx.fill();
-        ctx.fillStyle=flash?'#fff':'#8f8';ctx.beginPath();ctx.arc(0,0,3.5,0,Math.PI*2);ctx.fill();
+        // SF 소형 드론 - 삼각 + 추진기
+        ctx.fillStyle=flash?'#fff':'#0a2a1a';
+        ctx.shadowColor='#0f0';ctx.shadowBlur=5;
+        ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(-9,6);ctx.lineTo(0,3);ctx.lineTo(9,6);ctx.closePath();ctx.fill();
+        // 추진기 글로우
+        ctx.fillStyle=flash?'#fff':'#4f4';
+        ctx.beginPath();ctx.arc(-5,6,2,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(5,6,2,0,Math.PI*2);ctx.fill();
+        // 센서
+        ctx.fillStyle='#8f8';
+        ctx.beginPath();ctx.arc(0,-3,2,0,Math.PI*2);ctx.fill();
     }
     ctx.shadowBlur=0;ctx.restore();
 }
@@ -662,137 +744,100 @@ function drawBoss() {
     const pulse=Math.sin(frame*0.05)*0.03+1, flash=b.flashTimer>0;
     ctx.scale(pulse,pulse);
 
+    // SF 거대 전함 외형 (얼굴 주변 메카닉 프레임)
+    // 외곽 메카닉 아머
+    ctx.fillStyle='#0a0a1a';
+    ctx.shadowColor=flash?'#f00':'#80f';ctx.shadowBlur=15;
+    ctx.beginPath();
+    ctx.moveTo(0,-42);ctx.lineTo(-25,-35);ctx.lineTo(-40,-15);ctx.lineTo(-45,5);
+    ctx.lineTo(-40,30);ctx.lineTo(-25,42);ctx.lineTo(0,45);
+    ctx.lineTo(25,42);ctx.lineTo(40,30);ctx.lineTo(45,5);
+    ctx.lineTo(40,-15);ctx.lineTo(25,-35);ctx.closePath();ctx.fill();
+
+    // 메카닉 디테일 라인
+    ctx.strokeStyle=flash?'#f44':'#60f';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(-25,-35);ctx.lineTo(-20,-20);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(25,-35);ctx.lineTo(20,-20);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-40,-15);ctx.lineTo(-30,-5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(40,-15);ctx.lineTo(30,-5);ctx.stroke();
+    // 에너지 도트
+    ctx.fillStyle=`hsl(${frame*2%360},100%,60%)`;
+    ctx.beginPath();ctx.arc(-35,5,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(35,5,3,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(-30,25,2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(30,25,2,0,Math.PI*2);ctx.fill();
+
+    // 얼굴 영역 (메카닉 프레임 안에 인간 얼굴)
+    ctx.shadowBlur=0;
+
     // 짧은 머리카락
-    ctx.fillStyle=flash?'#fff':'#1a1a1a';
-    ctx.beginPath();
-    ctx.ellipse(0,-18,28,16,0,Math.PI+0.3,Math.PI*2-0.3);
-    ctx.fill();
-    // 옆머리
-    ctx.beginPath();ctx.ellipse(-28,-5,6,14,0.2,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(28,-5,6,14,-0.2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=flash?'#444':'#1a1a1a';
+    ctx.beginPath();ctx.ellipse(0,-18,24,14,0,Math.PI+0.3,Math.PI*2-0.3);ctx.fill();
+    ctx.beginPath();ctx.ellipse(-24,-5,5,12,0.2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(24,-5,5,12,-0.2,0,Math.PI*2);ctx.fill();
 
-    // 얼굴 (통통한 둥근형)
-    ctx.fillStyle=flash?'#fff':'#f0c8a0';
-    ctx.beginPath();
-    ctx.ellipse(0,5,30,33,0,0,Math.PI*2);
-    ctx.fill();
-    // 턱 라인 (이중턱 느낌)
-    ctx.fillStyle=flash?'#eee':'#e8b890';
-    ctx.beginPath();
-    ctx.ellipse(0,30,22,10,0,0,Math.PI);
-    ctx.fill();
+    // 얼굴
+    ctx.fillStyle=flash?'#daa':'#f0c8a0';
+    ctx.beginPath();ctx.ellipse(0,5,26,28,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=flash?'#c99':'#e8b890';
+    ctx.beginPath();ctx.ellipse(0,26,18,8,0,0,Math.PI);ctx.fill();
 
-    // 이마 주름 (살짝)
-    ctx.strokeStyle='rgba(180,130,90,0.3)';ctx.lineWidth=0.8;
-    ctx.beginPath();ctx.moveTo(-15,-18);ctx.quadraticCurveTo(0,-20,15,-18);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(-12,-14);ctx.quadraticCurveTo(0,-16,12,-14);ctx.stroke();
+    // 안경
+    ctx.strokeStyle='#2a2a2a';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.ellipse(-9,-2,10,8,0,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.ellipse(9,-2,10,8,0,0,Math.PI*2);ctx.stroke();
+    ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-1,-3);ctx.quadraticCurveTo(0,-5,1,-3);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-19,-3);ctx.lineTo(-25,-5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(19,-3);ctx.lineTo(25,-5);ctx.stroke();
 
-    // 눈썹 (진한 검정, 약간 두꺼움)
-    ctx.fillStyle=flash?'#aaa':'#222';
-    ctx.beginPath();ctx.ellipse(-11,-12,8,2.5,0,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(11,-12,8,2.5,0,0,Math.PI*2);ctx.fill();
-
-    // 안경 (둥근 뿔테 - 사진과 동일)
-    ctx.strokeStyle=flash?'#888':'#2a2a2a';ctx.lineWidth=3;
-    ctx.beginPath();ctx.ellipse(-11,-2,12,10,0,0,Math.PI*2);ctx.stroke();
-    ctx.beginPath();ctx.ellipse(11,-2,12,10,0,0,Math.PI*2);ctx.stroke();
-    // 안경 브릿지 (코 위)
-    ctx.lineWidth=2.5;
-    ctx.beginPath();ctx.moveTo(-1,-3);ctx.quadraticCurveTo(0,-5,1,-3);ctx.stroke();
-    // 안경 다리
-    ctx.lineWidth=2;
-    ctx.beginPath();ctx.moveTo(-23,-3);ctx.lineTo(-30,-5);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(23,-3);ctx.lineTo(30,-5);ctx.stroke();
-
-    // 눈 (안경 렌즈 안, 약간 가늘게 - 웃고 있어서)
-    ctx.fillStyle='#111';
     if(!flash) {
         // 평소: 웃는 눈
-        ctx.beginPath();ctx.ellipse(-11,-2,3.5,2.5,0,0,Math.PI*2);ctx.fill();
-        ctx.beginPath();ctx.ellipse(11,-2,3.5,2.5,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#111';
+        ctx.beginPath();ctx.ellipse(-9,-2,3,2.2,0,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.ellipse(9,-2,3,2.2,0,0,Math.PI*2);ctx.fill();
         ctx.fillStyle='#fff';
-        ctx.beginPath();ctx.arc(-9.5,-3,1.3,0,Math.PI*2);ctx.fill();
-        ctx.beginPath();ctx.arc(12.5,-3,1.3,0,Math.PI*2);ctx.fill();
-    } else {
-        // 피격: X자 눈 (아픈 표정)
-        ctx.strokeStyle='#f00';ctx.lineWidth=2.5;
-        ctx.beginPath();ctx.moveTo(-14,-5);ctx.lineTo(-8,1);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(-8,-5);ctx.lineTo(-14,1);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(8,-5);ctx.lineTo(14,1);ctx.stroke();
-        ctx.beginPath();ctx.moveTo(14,-5);ctx.lineTo(8,1);ctx.stroke();
-    }
-    // 눈 밑 웃음 주름
-    ctx.strokeStyle='rgba(160,100,60,0.4)';ctx.lineWidth=0.8;
-    ctx.beginPath();ctx.arc(-11,2,7,0.2,Math.PI-0.2);ctx.stroke();
-    ctx.beginPath();ctx.arc(11,2,7,0.2,Math.PI-0.2);ctx.stroke();
-
-    // 코 (넓적한 코)
-    ctx.fillStyle=flash?'#eee':'#e0b080';
-    ctx.beginPath();ctx.ellipse(0,7,6,5,0,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='rgba(160,100,60,0.4)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.arc(0,7,6,0.3,Math.PI-0.3);ctx.stroke();
-
-    // 입 (활짝 웃는 큰 미소, 이빨 보임)
-    if(!flash) {
-        // 평소: 웃는 입
+        ctx.beginPath();ctx.arc(-7.5,-3,1.2,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(10.5,-3,1.2,0,Math.PI*2);ctx.fill();
+        // 웃는 입
         ctx.fillStyle='#c06040';
-        ctx.beginPath();
-        ctx.moveTo(-16,18);
-        ctx.quadraticCurveTo(-8,28,0,28);
-        ctx.quadraticCurveTo(8,28,16,18);
-        ctx.quadraticCurveTo(8,22,0,22);
-        ctx.quadraticCurveTo(-8,22,-16,18);
-        ctx.fill();
-        // 이빨
-        ctx.fillStyle='#fff';
-        ctx.fillRect(-11,18,22,6);
-        ctx.strokeStyle='rgba(200,200,200,0.5)';ctx.lineWidth=0.5;
-        for(let i=-9;i<=9;i+=3){ctx.beginPath();ctx.moveTo(i,18);ctx.lineTo(i,24);ctx.stroke();}
-        // 아랫입술
-        ctx.fillStyle='#b05040';
-        ctx.beginPath();
-        ctx.moveTo(-14,24);ctx.quadraticCurveTo(0,32,14,24);
-        ctx.quadraticCurveTo(0,28,-14,24);
-        ctx.fill();
+        ctx.beginPath();ctx.moveTo(-13,16);ctx.quadraticCurveTo(-6,24,0,24);ctx.quadraticCurveTo(6,24,13,16);ctx.quadraticCurveTo(6,19,0,19);ctx.quadraticCurveTo(-6,19,-13,16);ctx.fill();
+        ctx.fillStyle='#fff';ctx.fillRect(-9,16,18,5);
+        ctx.fillStyle='#b05040';ctx.beginPath();ctx.moveTo(-11,21);ctx.quadraticCurveTo(0,27,11,21);ctx.quadraticCurveTo(0,24,-11,21);ctx.fill();
     } else {
-        // 피격: 아픈 입 (찡그린 물결 모양)
+        // 피격: 아픈 표정
+        ctx.strokeStyle='#f00';ctx.lineWidth=2.5;
+        ctx.beginPath();ctx.moveTo(-12,-5);ctx.lineTo(-6,1);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-6,-5);ctx.lineTo(-12,1);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(6,-5);ctx.lineTo(12,1);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(12,-5);ctx.lineTo(6,1);ctx.stroke();
+        // 찡그린 입
         ctx.strokeStyle='#a04030';ctx.lineWidth=2.5;
-        ctx.beginPath();
-        ctx.moveTo(-14,20);
-        ctx.quadraticCurveTo(-7,24,0,20);
-        ctx.quadraticCurveTo(7,16,14,20);
-        ctx.stroke();
-        // 땀방울
+        ctx.beginPath();ctx.moveTo(-11,18);ctx.quadraticCurveTo(-5,22,0,18);ctx.quadraticCurveTo(5,14,11,18);ctx.stroke();
+        // 땀
         ctx.fillStyle='rgba(100,180,255,0.7)';
-        ctx.beginPath();ctx.ellipse(25,-10,3,4,0.3,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.ellipse(22,-8,2.5,3.5,0.3,0,Math.PI*2);ctx.fill();
     }
 
-    // 볼 (통통한 볼살 + 홍조)
-    ctx.fillStyle='rgba(255,120,100,0.2)';
-    ctx.beginPath();ctx.ellipse(-22,12,8,6,0,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.ellipse(22,12,8,6,0,0,Math.PI*2);ctx.fill();
+    // 볼 홍조
+    ctx.fillStyle='rgba(255,120,100,0.15)';
+    ctx.beginPath();ctx.ellipse(-18,10,6,5,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(18,10,6,5,0,0,Math.PI*2);ctx.fill();
 
-    // 팔자주름
-    ctx.strokeStyle='rgba(160,100,60,0.3)';ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(-8,8);ctx.quadraticCurveTo(-14,16,-16,18);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(8,8);ctx.quadraticCurveTo(14,16,16,18);ctx.stroke();
+    // 코
+    ctx.fillStyle=flash?'#daa':'#e0b080';
+    ctx.beginPath();ctx.ellipse(0,7,5,4,0,0,Math.PI*2);ctx.fill();
 
-    // 보스 오라 (HP에 따라)
-    if(!flash) {
-        const hpR=b.hp/b.maxHp;
-        ctx.shadowColor=hpR>0.5?'#a0f':hpR>0.25?'#f80':'#f00';
-        ctx.shadowBlur=12+Math.sin(frame*0.08)*5;
-        ctx.strokeStyle=hpR>0.5?'rgba(160,0,255,0.3)':hpR>0.25?'rgba(255,128,0,0.4)':'rgba(255,0,0,0.5)';
-        ctx.lineWidth=2;
-        ctx.beginPath();ctx.ellipse(0,5,35,38,0,0,Math.PI*2);ctx.stroke();
-        ctx.shadowBlur=0;
-    }
+    // 회전하는 에너지 링 (SF 요소)
+    ctx.strokeStyle=`hsla(${frame*3%360},100%,60%,0.4)`;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.ellipse(0,0,42,20,frame*0.02,0,Math.PI*2);ctx.stroke();
 
     // HP바
-    ctx.fillStyle='#333';ctx.fillRect(-40,45,80,5);
+    ctx.fillStyle='#222';ctx.fillRect(-42,48,84,5);
     const hpRatio=b.hp/b.maxHp;
     ctx.fillStyle=hpRatio>0.5?'#0f0':hpRatio>0.25?'#ff0':'#f00';
-    ctx.fillRect(-40,45,80*hpRatio,5);
+    ctx.fillRect(-42,48,84*hpRatio,5);
+    // HP바 프레임
+    ctx.strokeStyle='#666';ctx.lineWidth=1;ctx.strokeRect(-42,48,84,5);
 
     ctx.restore();
 }
@@ -817,11 +862,57 @@ function drawHUD() {
 }
 
 // ============================================
-// 스코어보드
+// 스코어보드 (온라인 공유 + 로컬 백업)
+// jsonblob.com 무료 API (키 불필요)
 // ============================================
+const BLOB_ID = 'galaga-supreme-scores';
+const BLOB_URL = 'https://jsonblob.com/api/jsonBlob';
+let onlineBlobId = localStorage.getItem('galagaBlobId') || '';
+
 function getToday(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function getAllScores(){try{return JSON.parse(localStorage.getItem('galagaScores')||'[]');}catch{return[];}}
-function saveAllScores(s){localStorage.setItem('galagaScores',JSON.stringify(s));}
+function getLocalScores(){try{return JSON.parse(localStorage.getItem('galagaScores')||'[]');}catch{return[];}}
+function saveLocalScores(s){localStorage.setItem('galagaScores',JSON.stringify(s));}
+
+// 온라인 점수 가져오기
+async function fetchOnlineScores() {
+    if(!onlineBlobId) return null;
+    try {
+        const res = await fetch(`${BLOB_URL}/${onlineBlobId}`, {
+            headers: {'Content-Type':'application/json','Accept':'application/json'}
+        });
+        if(res.ok) { const data = await res.json(); return data.scores || []; }
+    } catch(e) {}
+    return null;
+}
+
+// 온라인 점수 저장 (최초 생성 또는 업데이트)
+async function pushOnlineScore(newEntry) {
+    try {
+        let scores = await fetchOnlineScores();
+        if(!scores) scores = getLocalScores();
+        scores.push(newEntry);
+        scores.sort((a,b)=>b.score-a.score);
+        if(scores.length > 200) scores.length = 200;
+        const body = JSON.stringify({scores});
+
+        if(!onlineBlobId) {
+            // 최초 생성
+            const res = await fetch(BLOB_URL, {
+                method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body
+            });
+            if(res.ok) {
+                const loc = res.headers.get('Location') || res.headers.get('location');
+                if(loc) { onlineBlobId = loc.split('/').pop(); localStorage.setItem('galagaBlobId', onlineBlobId); }
+            }
+        } else {
+            // 업데이트
+            await fetch(`${BLOB_URL}/${onlineBlobId}`, {
+                method:'PUT', headers:{'Content-Type':'application/json','Accept':'application/json'}, body
+            });
+        }
+        return scores;
+    } catch(e) { return null; }
+}
 
 function showScoreScreen() {
     const el=document.getElementById('score-screen');
@@ -834,26 +925,56 @@ function showScoreScreen() {
 }
 function hideScoreScreen(){document.getElementById('score-screen').style.display='none';}
 
-function saveScore() {
+async function saveScore() {
     const name=document.getElementById('player-name').value.trim()||'???';
     localStorage.setItem('galagaLastName',name);
-    const scores=getAllScores();
-    scores.push({name,score,stage,kills:totalKills,combo:maxCombo,date:getToday()});
-    scores.sort((a,b)=>b.score-a.score);
-    if(scores.length>100)scores.length=100;
-    saveAllScores(scores);
+    const entry = {name,score,stage,kills:totalKills,combo:maxCombo,date:getToday()};
+
+    // 로컬 저장
+    const local=getLocalScores();
+    local.push(entry);
+    local.sort((a,b)=>b.score-a.score);
+    if(local.length>200)local.length=200;
+    saveLocalScores(local);
+
     document.getElementById('name-input-area').style.display='none';
+    document.getElementById('save-score-btn').textContent='저장중...';
+
+    // 온라인 저장
+    const online = await pushOnlineScore(entry);
+    if(online) {
+        saveLocalScores(online); // 온라인 데이터로 로컬 동기화
+    }
+    document.getElementById('save-score-btn').textContent='저장';
     renderLeaderboards();
 }
 
-function renderLeaderboards() {
-    const scores=getAllScores(), today=getToday();
+async function renderLeaderboards() {
+    const today=getToday();
+    // 온라인 점수 시도, 실패 시 로컬
+    let scores = await fetchOnlineScores();
+    if(!scores) scores = getLocalScores();
+    else saveLocalScores(scores); // 온라인 성공 시 로컬 동기화
+
     const todayS=scores.filter(s=>s.date===today).sort((a,b)=>b.score-a.score).slice(0,20);
-    const allS=scores.sort((a,b)=>b.score-a.score).slice(0,20);
+    const allS=[...scores].sort((a,b)=>b.score-a.score).slice(0,20);
     document.getElementById('today-scores').innerHTML=todayS.length===0?'<span style="color:#666">기록 없음</span>':
         todayS.map((s,i)=>`<div style="color:${i===0?'#ff0':'#ccc'}">${i+1}. ${s.name} ${s.score.toLocaleString()} (S${s.stage})</div>`).join('');
     document.getElementById('all-scores').innerHTML=allS.length===0?'<span style="color:#666">기록 없음</span>':
         allS.map((s,i)=>`<div style="color:${i===0?'#ff0':'#ccc'}">${i+1}. ${s.name} ${s.score.toLocaleString()} (S${s.stage})</div>`).join('');
+}
+
+// 타이틀 화면에 스코어 표시
+async function showTitleScores() {
+    let scores = await fetchOnlineScores();
+    if(!scores) scores = getLocalScores();
+    const top5 = [...scores].sort((a,b)=>b.score-a.score).slice(0,5);
+    const el = document.getElementById('title-scores');
+    if(el) {
+        el.innerHTML = top5.length===0 ? '' :
+            '<div style="margin-top:10px;color:#f80;font-size:11px;">🏆 TOP SCORES</div>' +
+            top5.map((s,i)=>`<div style="color:${i===0?'#ff0':'#aaa'};font-size:11px;">${i+1}. ${s.name} - ${s.score.toLocaleString()}</div>`).join('');
+    }
 }
 
 // ============================================
@@ -867,4 +988,5 @@ document.getElementById('player-name').addEventListener('keydown',e=>{if(e.code=
 // ============================================
 function gameLoop(){update();render();requestAnimationFrame(gameLoop);}
 uiOverlay.style.display='block';
+showTitleScores(); // 타이틀에 스코어 표시
 gameLoop();
