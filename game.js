@@ -121,7 +121,7 @@ function startGame() {
     playerBullets=[]; enemyBullets=[]; items=[]; particles=[]; damageNumbers=[];
     boss=null;
     spawnWave();
-    setTimeout(()=>sfx.startBGM(), 800);
+    setTimeout(()=>sfx.playRandomBGM(), 800);
 }
 
 // ============================================
@@ -393,7 +393,7 @@ function checkCollisions() {
     playerBullets.forEach(b=>{
         if(boss && boss.alive) {
             if(Math.abs(b.x-boss.x)<boss.width/2+5 && Math.abs(b.y-boss.y)<boss.height/2+5) {
-                b.y=-100; boss.hp--; boss.flashTimer=5;
+                b.y=-100; boss.hp--; boss.flashTimer=12;
                 sfx.hitEnemy();
                 createExplosion(b.x,b.y,'#fff',3);
                 if(boss.hp<=0) {
@@ -500,7 +500,7 @@ function updateStageClear() {
     stageClearFireworks.forEach(p=>{p.trail.push({x:p.x,y:p.y});if(p.trail.length>5)p.trail.shift();p.x+=p.vx;p.y+=p.vy;p.vy+=0.05;p.vx*=0.98;p.life--;});
     stageClearFireworks=stageClearFireworks.filter(p=>p.life>0);
     if(stageClearTimer%15===0&&stageClearTimer>10) createFirework(60+Math.random()*360,60+Math.random()*200);
-    if(stageClearTimer<=0){stage++;gameState=STATE.PLAYING;stageClearFireworks=[];spawnWave();}
+    if(stageClearTimer<=0){stage++;gameState=STATE.PLAYING;stageClearFireworks=[];sfx.playRandomBGM();spawnWave();}
 }
 
 function createExplosion(x,y,color,count=12) {
@@ -659,23 +659,141 @@ function drawEnemy(e) {
 
 function drawBoss() {
     const b=boss;ctx.save();ctx.translate(b.x,b.y);
-    const pulse=Math.sin(frame*0.05)*0.05+1, flash=b.flashTimer>0;
+    const pulse=Math.sin(frame*0.05)*0.03+1, flash=b.flashTimer>0;
     ctx.scale(pulse,pulse);
-    // 본체
-    ctx.fillStyle=flash?'#fff':'#c0f';ctx.shadowColor='#f0f';ctx.shadowBlur=15;
-    ctx.beginPath();ctx.moveTo(0,-30);ctx.bezierCurveTo(-20,-30,-35,-10,-35,5);ctx.bezierCurveTo(-35,20,-20,30,-10,25);ctx.lineTo(0,15);ctx.lineTo(10,25);ctx.bezierCurveTo(20,30,35,20,35,5);ctx.bezierCurveTo(35,-10,20,-30,0,-30);ctx.fill();
-    // 눈
-    ctx.fillStyle='#f00';ctx.beginPath();ctx.arc(-12,-5,5,0,Math.PI*2);ctx.arc(12,-5,5,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#ff0';ctx.beginPath();ctx.arc(-12,-5,2.5,0,Math.PI*2);ctx.arc(12,-5,2.5,0,Math.PI*2);ctx.fill();
-    // 장식
-    ctx.fillStyle='#80f';ctx.beginPath();ctx.moveTo(-25,-20);ctx.lineTo(-40,-35);ctx.lineTo(-30,-15);ctx.closePath();ctx.fill();
-    ctx.beginPath();ctx.moveTo(25,-20);ctx.lineTo(40,-35);ctx.lineTo(30,-15);ctx.closePath();ctx.fill();
-    ctx.shadowBlur=0;
+
+    // 짧은 머리카락
+    ctx.fillStyle=flash?'#fff':'#1a1a1a';
+    ctx.beginPath();
+    ctx.ellipse(0,-18,28,16,0,Math.PI+0.3,Math.PI*2-0.3);
+    ctx.fill();
+    // 옆머리
+    ctx.beginPath();ctx.ellipse(-28,-5,6,14,0.2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(28,-5,6,14,-0.2,0,Math.PI*2);ctx.fill();
+
+    // 얼굴 (통통한 둥근형)
+    ctx.fillStyle=flash?'#fff':'#f0c8a0';
+    ctx.beginPath();
+    ctx.ellipse(0,5,30,33,0,0,Math.PI*2);
+    ctx.fill();
+    // 턱 라인 (이중턱 느낌)
+    ctx.fillStyle=flash?'#eee':'#e8b890';
+    ctx.beginPath();
+    ctx.ellipse(0,30,22,10,0,0,Math.PI);
+    ctx.fill();
+
+    // 이마 주름 (살짝)
+    ctx.strokeStyle='rgba(180,130,90,0.3)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(-15,-18);ctx.quadraticCurveTo(0,-20,15,-18);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-12,-14);ctx.quadraticCurveTo(0,-16,12,-14);ctx.stroke();
+
+    // 눈썹 (진한 검정, 약간 두꺼움)
+    ctx.fillStyle=flash?'#aaa':'#222';
+    ctx.beginPath();ctx.ellipse(-11,-12,8,2.5,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(11,-12,8,2.5,0,0,Math.PI*2);ctx.fill();
+
+    // 안경 (둥근 뿔테 - 사진과 동일)
+    ctx.strokeStyle=flash?'#888':'#2a2a2a';ctx.lineWidth=3;
+    ctx.beginPath();ctx.ellipse(-11,-2,12,10,0,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.ellipse(11,-2,12,10,0,0,Math.PI*2);ctx.stroke();
+    // 안경 브릿지 (코 위)
+    ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(-1,-3);ctx.quadraticCurveTo(0,-5,1,-3);ctx.stroke();
+    // 안경 다리
+    ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(-23,-3);ctx.lineTo(-30,-5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(23,-3);ctx.lineTo(30,-5);ctx.stroke();
+
+    // 눈 (안경 렌즈 안, 약간 가늘게 - 웃고 있어서)
+    ctx.fillStyle='#111';
+    if(!flash) {
+        // 평소: 웃는 눈
+        ctx.beginPath();ctx.ellipse(-11,-2,3.5,2.5,0,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.ellipse(11,-2,3.5,2.5,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#fff';
+        ctx.beginPath();ctx.arc(-9.5,-3,1.3,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(12.5,-3,1.3,0,Math.PI*2);ctx.fill();
+    } else {
+        // 피격: X자 눈 (아픈 표정)
+        ctx.strokeStyle='#f00';ctx.lineWidth=2.5;
+        ctx.beginPath();ctx.moveTo(-14,-5);ctx.lineTo(-8,1);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-8,-5);ctx.lineTo(-14,1);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(8,-5);ctx.lineTo(14,1);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(14,-5);ctx.lineTo(8,1);ctx.stroke();
+    }
+    // 눈 밑 웃음 주름
+    ctx.strokeStyle='rgba(160,100,60,0.4)';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.arc(-11,2,7,0.2,Math.PI-0.2);ctx.stroke();
+    ctx.beginPath();ctx.arc(11,2,7,0.2,Math.PI-0.2);ctx.stroke();
+
+    // 코 (넓적한 코)
+    ctx.fillStyle=flash?'#eee':'#e0b080';
+    ctx.beginPath();ctx.ellipse(0,7,6,5,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(160,100,60,0.4)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(0,7,6,0.3,Math.PI-0.3);ctx.stroke();
+
+    // 입 (활짝 웃는 큰 미소, 이빨 보임)
+    if(!flash) {
+        // 평소: 웃는 입
+        ctx.fillStyle='#c06040';
+        ctx.beginPath();
+        ctx.moveTo(-16,18);
+        ctx.quadraticCurveTo(-8,28,0,28);
+        ctx.quadraticCurveTo(8,28,16,18);
+        ctx.quadraticCurveTo(8,22,0,22);
+        ctx.quadraticCurveTo(-8,22,-16,18);
+        ctx.fill();
+        // 이빨
+        ctx.fillStyle='#fff';
+        ctx.fillRect(-11,18,22,6);
+        ctx.strokeStyle='rgba(200,200,200,0.5)';ctx.lineWidth=0.5;
+        for(let i=-9;i<=9;i+=3){ctx.beginPath();ctx.moveTo(i,18);ctx.lineTo(i,24);ctx.stroke();}
+        // 아랫입술
+        ctx.fillStyle='#b05040';
+        ctx.beginPath();
+        ctx.moveTo(-14,24);ctx.quadraticCurveTo(0,32,14,24);
+        ctx.quadraticCurveTo(0,28,-14,24);
+        ctx.fill();
+    } else {
+        // 피격: 아픈 입 (찡그린 물결 모양)
+        ctx.strokeStyle='#a04030';ctx.lineWidth=2.5;
+        ctx.beginPath();
+        ctx.moveTo(-14,20);
+        ctx.quadraticCurveTo(-7,24,0,20);
+        ctx.quadraticCurveTo(7,16,14,20);
+        ctx.stroke();
+        // 땀방울
+        ctx.fillStyle='rgba(100,180,255,0.7)';
+        ctx.beginPath();ctx.ellipse(25,-10,3,4,0.3,0,Math.PI*2);ctx.fill();
+    }
+
+    // 볼 (통통한 볼살 + 홍조)
+    ctx.fillStyle='rgba(255,120,100,0.2)';
+    ctx.beginPath();ctx.ellipse(-22,12,8,6,0,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.ellipse(22,12,8,6,0,0,Math.PI*2);ctx.fill();
+
+    // 팔자주름
+    ctx.strokeStyle='rgba(160,100,60,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(-8,8);ctx.quadraticCurveTo(-14,16,-16,18);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(8,8);ctx.quadraticCurveTo(14,16,16,18);ctx.stroke();
+
+    // 보스 오라 (HP에 따라)
+    if(!flash) {
+        const hpR=b.hp/b.maxHp;
+        ctx.shadowColor=hpR>0.5?'#a0f':hpR>0.25?'#f80':'#f00';
+        ctx.shadowBlur=12+Math.sin(frame*0.08)*5;
+        ctx.strokeStyle=hpR>0.5?'rgba(160,0,255,0.3)':hpR>0.25?'rgba(255,128,0,0.4)':'rgba(255,0,0,0.5)';
+        ctx.lineWidth=2;
+        ctx.beginPath();ctx.ellipse(0,5,35,38,0,0,Math.PI*2);ctx.stroke();
+        ctx.shadowBlur=0;
+    }
+
     // HP바
-    ctx.fillStyle='#333';ctx.fillRect(-40,35,80,5);
+    ctx.fillStyle='#333';ctx.fillRect(-40,45,80,5);
     const hpRatio=b.hp/b.maxHp;
     ctx.fillStyle=hpRatio>0.5?'#0f0':hpRatio>0.25?'#ff0':'#f00';
-    ctx.fillRect(-40,35,80*hpRatio,5);
+    ctx.fillRect(-40,45,80*hpRatio,5);
+
     ctx.restore();
 }
 
