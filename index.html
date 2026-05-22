@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
-    <title>갤러그 - Galaga</title>
+    <title>★ GALAGA SUPREME ★</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
@@ -18,82 +18,76 @@
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             text-align: center; color: #fff; display: none; z-index: 10;
+            width: 90%; max-width: 420px;
         }
         #ui-overlay h1 {
-            font-size: 42px; color: #ff0; margin-bottom: 20px;
-            text-shadow: 0 0 20px #ff0, 0 0 40px #f80; letter-spacing: 8px;
+            font-size: 38px; color: #ff0; margin-bottom: 15px;
+            text-shadow: 0 0 20px #ff0, 0 0 40px #f80; letter-spacing: 6px;
         }
-        #ui-overlay p { font-size: 16px; margin-bottom: 10px; color: #aaf; }
+        #ui-overlay p { font-size: 14px; margin-bottom: 8px; color: #aaf; }
         #ui-overlay .blink {
             animation: blink 1s infinite; color: #0ff;
-            font-size: 18px; margin-top: 20px;
+            font-size: 16px; margin-top: 15px;
+        }
+        #ui-overlay .controls-info {
+            background: rgba(255,255,255,0.05); border: 1px solid #333;
+            border-radius: 8px; padding: 12px; margin: 10px 0;
+            font-size: 12px; line-height: 1.8;
         }
         @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
-        #touch-controls {
-            display: none; position: absolute; bottom: 20px;
-            left: 0; right: 0; justify-content: center; gap: 20px;
-            z-index: 20; pointer-events: none;
+        #score-screen {
+            display: none; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); text-align: center;
+            color: #fff; z-index: 15; width: 90%; max-width: 420px;
         }
-        .touch-btn {
-            width: 70px; height: 70px; border-radius: 50%;
-            background: rgba(255,255,255,0.1);
-            border: 2px solid rgba(255,255,255,0.3);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 28px; color: rgba(255,255,255,0.6);
-            pointer-events: auto; -webkit-tap-highlight-color: transparent;
-        }
-        .touch-btn:active {
-            background: rgba(255,255,255,0.3);
-            border-color: rgba(255,255,255,0.6);
-        }
-        #mute-btn {
-            position: absolute; top: 10px; right: 10px;
-            width: 40px; height: 40px; border-radius: 50%;
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: #fff; font-size: 20px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 30;
+        #mute-btn, #pause-btn {
+            position: absolute; top: 10px; width: 36px; height: 36px;
+            border-radius: 50%; background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.2); color: #fff;
+            font-size: 18px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer; z-index: 30;
             -webkit-tap-highlight-color: transparent;
         }
+        #mute-btn { right: 10px; }
+        #pause-btn { right: 52px; }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
     <div id="ui-overlay">
         <h1>★ GALAGA ★</h1>
-        <p>◀ ▶ 이동 | 총알 자동 발사</p>
-        <p>📱 모바일: 터치로 좌우 이동</p>
+        <div class="controls-info">
+            🎮 PC: ← → 이동 | 자동 발사 | M 뮤트 | P 일시정지<br>
+            📱 모바일: 화면 좌/우 터치로 이동
+        </div>
+        <p>🛡 실드 | ⚡ 스피드 | 🔥 파워업 | ♥ 1UP</p>
+        <p>매 5스테이지 보스 등장!</p>
         <p class="blink">TAP OR PRESS SPACE TO START</p>
     </div>
-    <div id="score-screen" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; color:#fff; z-index:15; width:90%; max-width:400px;">
-        <h2 style="color:#f44; font-size:28px; margin-bottom:10px; text-shadow:0 0 10px #f44;">GAME OVER</h2>
-        <p id="final-score" style="color:#ff0; font-size:20px; margin-bottom:15px;"></p>
-        <div id="name-input-area" style="margin-bottom:15px;">
-            <input id="player-name" type="text" maxlength="8" placeholder="이름 입력" 
-                style="background:#111; border:2px solid #0ff; color:#0ff; padding:8px 12px; font-size:16px; text-align:center; font-family:'Courier New',monospace; width:150px; border-radius:4px;">
+    <div id="score-screen">
+        <h2 style="color:#f44; font-size:26px; margin-bottom:8px; text-shadow:0 0 10px #f44;">GAME OVER</h2>
+        <p id="final-score" style="color:#ff0; font-size:18px; margin-bottom:12px;"></p>
+        <div id="name-input-area" style="margin-bottom:12px;">
+            <input id="player-name" type="text" maxlength="8" placeholder="이름 입력"
+                style="background:#111; border:2px solid #0ff; color:#0ff; padding:6px 10px; font-size:14px; text-align:center; font-family:'Courier New',monospace; width:130px; border-radius:4px;">
             <button id="save-score-btn" onclick="saveScore()"
-                style="background:#0ff; color:#000; border:none; padding:8px 16px; font-size:14px; font-family:'Courier New',monospace; cursor:pointer; border-radius:4px; margin-left:5px; font-weight:bold;">저장</button>
+                style="background:#0ff; color:#000; border:none; padding:6px 14px; font-size:13px; font-family:'Courier New',monospace; cursor:pointer; border-radius:4px; margin-left:4px; font-weight:bold;">저장</button>
         </div>
-        <div style="display:flex; gap:10px; justify-content:center;">
-            <div style="flex:1; background:rgba(255,255,255,0.05); border:1px solid #333; border-radius:6px; padding:10px;">
-                <h3 style="color:#0f0; font-size:14px; margin-bottom:8px;">📅 오늘 TOP 5</h3>
-                <div id="today-scores" style="font-size:12px; line-height:1.8;"></div>
+        <div style="display:flex; gap:8px; justify-content:center;">
+            <div style="flex:1; background:rgba(255,255,255,0.05); border:1px solid #333; border-radius:6px; padding:8px;">
+                <h3 style="color:#0f0; font-size:12px; margin-bottom:6px;">📅 오늘 TOP 20</h3>
+                <div id="today-scores" style="font-size:11px; line-height:1.8; max-height:300px; overflow-y:auto;"></div>
             </div>
-            <div style="flex:1; background:rgba(255,255,255,0.05); border:1px solid #333; border-radius:6px; padding:10px;">
-                <h3 style="color:#f80; font-size:14px; margin-bottom:8px;">🏆 전체 TOP 5</h3>
-                <div id="all-scores" style="font-size:12px; line-height:1.8;"></div>
+            <div style="flex:1; background:rgba(255,255,255,0.05); border:1px solid #333; border-radius:6px; padding:8px;">
+                <h3 style="color:#f80; font-size:12px; margin-bottom:6px;">🏆 전체 TOP 20</h3>
+                <div id="all-scores" style="font-size:11px; line-height:1.8; max-height:300px; overflow-y:auto;"></div>
             </div>
         </div>
-        <p style="color:#0ff; margin-top:15px; animation:blink 1s infinite; font-size:14px;">TAP OR PRESS SPACE TO RESTART</p>
-    </div>
-    <div id="touch-controls">
-        <div class="touch-btn" id="btn-left">◀</div>
-        <div class="touch-btn" id="btn-right">▶</div>
+        <p style="color:#0ff; margin-top:12px; animation:blink 1s infinite; font-size:13px;">TAP OR PRESS SPACE TO RESTART</p>
     </div>
     <div id="mute-btn" onclick="toggleMute()">🔊</div>
+    <div id="pause-btn" onclick="togglePause()">⏸</div>
     <script src="sound.js"></script>
     <script src="game.js"></script>
 </body>
-    
 </html>
