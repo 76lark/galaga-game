@@ -5,146 +5,197 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="screen-orientation" content="landscape">
-    <title>★ GRADIUS TRIBUTE ★</title>
+    <title>OX 상식퀴즈</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
-            background: #000; width: 100%; height: 100%;
-            overflow: hidden; font-family: 'Courier New', monospace;
-            touch-action: none; -webkit-touch-callout: none;
+            background: #1a1a2e; width: 100%; height: 100%;
+            overflow: hidden; font-family: 'Noto Sans KR', sans-serif;
+            touch-action: manipulation; -webkit-touch-callout: none;
             -webkit-user-select: none; user-select: none;
             position: fixed; top: 0; left: 0;
         }
         body { display: flex; justify-content: center; align-items: center; }
-        #gameCanvas { display: block; background: #000; position: absolute; top: 0; left: 0; }
-        #fullscreen-btn {
-            position: absolute; bottom: 10px; right: 10px; width: 40px; height: 40px;
-            border-radius: 50%; background: rgba(255,255,255,0.12);
-            border: 1px solid rgba(255,255,255,0.3); color: #fff;
-            font-size: 20px; display: flex; align-items: center;
-            justify-content: center; cursor: pointer; z-index: 30;
+
+        /* 게임 컨테이너 */
+        #game-container {
+            width: 100%; height: 100%; display: none; flex-direction: column;
+            align-items: center; justify-content: center; padding: 20px;
+            position: relative;
+        }
+        #info-bar {
+            position: absolute; top: 0; left: 0; right: 0;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 20px; background: rgba(0,0,0,0.3);
+        }
+        #info-bar .lives { font-size: 20px; }
+        #info-bar .progress { color: #aaa; font-size: 14px; }
+        #info-bar .score { color: #0ff; font-size: 16px; font-weight: bold; }
+        #category-label {
+            position: absolute; top: 48px; left: 20px;
+            color: #888; font-size: 12px;
+        }
+        #question-area {
+            flex: 1; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            width: 100%; max-width: 700px; padding: 20px; padding-top: 50px;
+        }
+        #question-number { color: #888; font-size: 14px; margin-bottom: 8px; }
+        #question-text {
+            color: #fff; font-size: clamp(18px, 4vw, 28px); text-align: center;
+            line-height: 1.6; padding: 16px; min-height: 80px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #explanation {
+            color: #ff0; font-size: 13px; margin-top: 12px; text-align: center;
+            min-height: 20px; padding: 0 20px; opacity: 0; transition: opacity 0.3s;
+        }
+        #explanation.show { opacity: 1; }
+
+        /* O X 버튼 */
+        #buttons { display: flex; gap: 30px; margin-top: 20px; }
+        .ox-btn {
+            width: clamp(90px, 18vw, 140px); height: clamp(90px, 18vw, 140px);
+            border-radius: 50%; border: 4px solid; font-size: clamp(36px, 7vw, 60px);
+            font-weight: bold; cursor: pointer; display: flex;
+            align-items: center; justify-content: center;
+            transition: transform 0.1s, box-shadow 0.1s;
             -webkit-tap-highlight-color: transparent;
         }
-        @media (min-width: 1024px) {
-            #fullscreen-btn { display: none; }
+        .ox-btn:active { transform: scale(0.92); }
+        #btn-o {
+            background: rgba(0, 180, 100, 0.15); border-color: #0b4;
+            color: #0e6; box-shadow: 0 0 20px rgba(0,180,100,0.2);
         }
-        /* 세로 모드일 때 회전 안내 */
-        #rotate-msg {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: #000; z-index: 9999; justify-content: center; align-items: center;
-            flex-direction: column; color: #fff; font-size: 18px; text-align: center;
+        #btn-x {
+            background: rgba(220, 50, 50, 0.15); border-color: #d33;
+            color: #f44; box-shadow: 0 0 20px rgba(220,50,50,0.2);
         }
-        #rotate-msg .icon { font-size: 48px; margin-bottom: 16px; animation: rotateAnim 2s infinite; }
-        @keyframes rotateAnim { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(90deg)} }
-        @media (orientation: portrait) and (max-width: 768px) {
-            #rotate-msg { display: flex !important; }
+        /* 피드백 - 버튼 위 */
+        #feedback {
+            position: absolute; bottom: calc(clamp(90px, 18vw, 140px) + 50px);
+            left: 50%; transform: translateX(-50%);
+            font-size: 56px; pointer-events: none; opacity: 0;
+            transition: opacity 0.3s; z-index: 100;
         }
-        @media (orientation: landscape), (min-width: 769px) {
-            #rotate-msg { display: none !important; }
+        #feedback.show { opacity: 1; }
+        .disabled { pointer-events: none; opacity: 0.5; }
+
+        /* 타이틀/분야 선택 화면 */
+        #title-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #1a1a2e; z-index: 50; padding: 20px; overflow-y: auto;
         }
-        #ui-overlay {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center; color: #fff; display: none; z-index: 10;
-            width: 90%; max-width: 480px;
+        #title-screen h1 {
+            font-size: clamp(28px, 6vw, 48px); color: #fff; margin-bottom: 6px;
+            text-shadow: 0 0 20px #0ff;
         }
-        #ui-overlay h1 {
-            font-size: 32px; color: #0ff; margin-bottom: 10px;
-            text-shadow: 0 0 20px #0ff, 0 0 40px #08f; letter-spacing: 4px;
+        #title-screen .subtitle { color: #888; font-size: 14px; margin-bottom: 16px; }
+        #title-screen .rules {
+            color: #aaa; font-size: 13px; line-height: 1.8; text-align: center;
+            margin-bottom: 16px;
         }
-        #ui-overlay .subtitle {
-            font-size: 14px; color: #f80; margin-bottom: 15px;
-            text-shadow: 0 0 10px #f80;
+        .category-grid {
+            display: grid; grid-template-columns: repeat(5, 1fr);
+            gap: 10px; width: 100%; max-width: 600px; padding: 0 10px;
         }
-        #ui-overlay p { font-size: 13px; margin-bottom: 6px; color: #aaf; }
-        #ui-overlay .blink {
-            animation: blink 1s infinite; color: #ff0;
-            font-size: 16px; margin-top: 15px;
+        @media (max-width: 500px) {
+            .category-grid { grid-template-columns: repeat(2, 1fr); }
         }
-        #ui-overlay .controls-info {
-            background: rgba(0,255,255,0.03); border: 1px solid #0ff3;
-            border-radius: 8px; padding: 12px; margin: 10px 0;
-            font-size: 12px; line-height: 2;
+        .cat-btn {
+            padding: 14px 8px; border-radius: 12px; border: 2px solid #333;
+            background: rgba(255,255,255,0.03); color: #fff; cursor: pointer;
+            text-align: center; font-size: 12px; transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
         }
-        @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
-        #score-screen {
-            display: none; position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%); text-align: center;
-            color: #fff; z-index: 15; width: 90%; max-width: 480px;
+        .cat-btn:hover, .cat-btn:active {
+            border-color: #0ff; background: rgba(0,255,255,0.08);
+            transform: scale(1.03);
         }
-        #mute-btn, #pause-btn {
-            position: absolute; top: 10px; width: 36px; height: 36px;
+        .cat-btn .icon { font-size: 28px; display: block; margin-bottom: 4px; }
+
+        /* 결과 화면 */
+        #result-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            background: #1a1a2e; z-index: 50; padding: 20px;
+        }
+        #result-screen h2 { font-size: 32px; margin-bottom: 16px; }
+        #result-screen .stats { color: #aaa; font-size: 16px; line-height: 2; text-align: center; margin-bottom: 24px; }
+        #retry-btn {
+            padding: 14px 40px; font-size: 18px; background: linear-gradient(135deg, #f80, #f40);
+            color: #fff; border: none; border-radius: 30px; cursor: pointer;
+            font-weight: bold; -webkit-tap-highlight-color: transparent;
+        }
+        #retry-btn:active { transform: scale(0.95); }
+
+        /* 뮤트 버튼 */
+        #mute-btn {
+            position: fixed; top: 12px; right: 16px; width: 36px; height: 36px;
             border-radius: 50%; background: rgba(255,255,255,0.08);
             border: 1px solid rgba(255,255,255,0.2); color: #fff;
             font-size: 18px; display: flex; align-items: center;
-            justify-content: center; cursor: pointer; z-index: 30;
+            justify-content: center; cursor: pointer; z-index: 60;
             -webkit-tap-highlight-color: transparent;
         }
-        #mute-btn { right: 10px; }
-        #pause-btn { right: 52px; }
-        .power-gauge {
-            display: flex; gap: 2px; justify-content: center;
-            margin-top: 8px;
-        }
-        .power-gauge span {
-            padding: 2px 6px; font-size: 10px; border: 1px solid #444;
-            color: #666; border-radius: 2px;
-        }
-        .power-gauge span.active { border-color: #f80; color: #f80; background: #f802; }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="rotate-msg">
-        <div class="icon">📱↪️</div>
-        <div>화면을 가로로 돌려주세요</div>
-        <div style="font-size:12px; color:#888; margin-top:8px;">Rotate your device to landscape</div>
-    </div>
-    <canvas id="gameCanvas"></canvas>
-    <div id="ui-overlay">
-        <h1>GRADIUS</h1>
-        <div class="subtitle">— TRIBUTE EDITION —</div>
-        <div class="controls-info">
-            🎮 PC: ← → ↑ ↓ 이동 | 자동 발사 | M 뮤트 | P 일시정지<br>
-            📱 모바일: 드래그로 이동 (상하좌우)
+
+    <!-- 분야 선택 화면 -->
+    <div id="title-screen">
+        <h1>⭕❌ 상식퀴즈</h1>
+        <div class="subtitle">분야를 선택하세요!</div>
+        <div class="rules">
+            ❤️ 목숨 5개 — 5번 틀리면 게임 오버!<br>
+            🏆 모든 문제를 통과하면 클리어!
         </div>
-        <p>파워업 캡슐을 먹으면 자동으로 강화됩니다!</p>
-        <p style="font-size:11px; color:#888; margin-top:5px;">
-            <span style="color:#0f0">S</span>=스피드 
-            <span style="color:#f80">M</span>=미사일 
-            <span style="color:#0ff">P</span>=파워 
-            <span style="color:#f0f">L</span>=레이저 
-            <span style="color:#ff0">O</span>=옵션 
-            <span style="color:#48f">?</span>=실드
-        </p>
-        <p style="margin-top:10px;">매 5스테이지 보스 등장!</p>
-        <p class="blink">TAP OR PRESS SPACE TO START</p>
-        <div id="title-scores" style="margin-top:10px;"></div>
-    </div>
-    <div id="score-screen">
-        <h2 style="color:#f44; font-size:26px; margin-bottom:8px; text-shadow:0 0 10px #f44;">GAME OVER</h2>
-        <p id="final-score" style="color:#ff0; font-size:16px; margin-bottom:12px;"></p>
-        <div id="name-input-area" style="margin-bottom:12px;">
-            <input id="player-name" type="text" maxlength="8" placeholder="이름 입력"
-                style="background:#111; border:2px solid #0ff; color:#0ff; padding:6px 10px; font-size:14px; text-align:center; font-family:'Courier New',monospace; width:130px; border-radius:4px;">
-            <button id="save-score-btn" onclick="saveScore()" ontouchend="event.preventDefault(); saveScore();"
-                style="background:#0ff; color:#000; border:none; padding:6px 14px; font-size:13px; font-family:'Courier New',monospace; cursor:pointer; border-radius:4px; margin-left:4px; font-weight:bold;">저장</button>
+        <div class="category-grid">
+            <div class="cat-btn" onclick="selectCategory('science')"><span class="icon">🔬</span>과학</div>
+            <div class="cat-btn" onclick="selectCategory('geography')"><span class="icon">🌍</span>지리</div>
+            <div class="cat-btn" onclick="selectCategory('history')"><span class="icon">📜</span>역사</div>
+            <div class="cat-btn" onclick="selectCategory('culture')"><span class="icon">🎨</span>문화/예술</div>
+            <div class="cat-btn" onclick="selectCategory('daily')"><span class="icon">💡</span>생활상식</div>
+            <div class="cat-btn" onclick="selectCategory('tech')"><span class="icon">💻</span>IT/기술</div>
+            <div class="cat-btn" onclick="selectCategory('animal')"><span class="icon">🐾</span>동물/자연</div>
+            <div class="cat-btn" onclick="selectCategory('korea')"><span class="icon">🇰🇷</span>한국상식</div>
+            <div class="cat-btn" onclick="selectCategory('food')"><span class="icon">🍽️</span>음식/요리</div>
+            <div class="cat-btn" onclick="selectCategory('body')"><span class="icon">🏥</span>인체/건강</div>
         </div>
-        <div style="display:flex; gap:8px; justify-content:center;">
-            <div style="flex:1; background:rgba(255,255,255,0.05); border:1px solid #333; border-radius:6px; padding:8px;">
-                <h3 style="color:#0f0; font-size:12px; margin-bottom:6px;">📅 오늘 TOP 20</h3>
-                <div id="today-scores" style="font-size:11px; line-height:1.8; max-height:300px; overflow-y:auto;"></div>
-            </div>
-            <div style="flex:1; background:rgba(255,255,255,0.05); border:1px solid #333; border-radius:6px; padding:8px;">
-                <h3 style="color:#f80; font-size:12px; margin-bottom:6px;">🏆 전체 TOP 20</h3>
-                <div id="all-scores" style="font-size:11px; line-height:1.8; max-height:300px; overflow-y:auto;"></div>
-            </div>
-        </div>
-        <p style="color:#0ff; margin-top:12px; animation:blink 1s infinite; font-size:13px;">TAP OR PRESS SPACE TO RESTART</p>
     </div>
-    <div id="mute-btn" onclick="toggleMute()" ontouchend="event.preventDefault(); toggleMute();">🔊</div>
-    <div id="pause-btn" onclick="togglePause()" ontouchend="event.preventDefault(); togglePause();">⏸</div>
-    <div id="fullscreen-btn" onclick="goFullscreen()" ontouchend="event.preventDefault(); goFullscreen();">⛶</div>
+
+    <!-- 게임 화면 -->
+    <div id="game-container">
+        <div id="info-bar">
+            <div class="lives" id="lives">❤️❤️❤️❤️❤️</div>
+            <div class="progress" id="progress">1 / 20</div>
+            <div class="score" id="score">0점</div>
+        </div>
+        <div id="category-label"></div>
+        <div id="question-area">
+            <div id="question-number">Q1.</div>
+            <div id="question-text">문제가 여기에 표시됩니다</div>
+            <div id="explanation"></div>
+        </div>
+        <div id="buttons">
+            <div class="ox-btn" id="btn-o" onclick="answer(true)">O</div>
+            <div class="ox-btn" id="btn-x" onclick="answer(false)">X</div>
+        </div>
+        <div id="feedback"></div>
+    </div>
+
+    <!-- 결과 화면 -->
+    <div id="result-screen">
+        <h2 id="result-title">GAME OVER</h2>
+        <div class="stats" id="result-stats"></div>
+        <button id="retry-btn" onclick="showTitle()">다시 하기</button>
+    </div>
+
+    <!-- 뮤트 버튼 -->
+    <div id="mute-btn" onclick="toggleMute()">🔊</div>
+
     <script src="sound.js"></script>
     <script src="game.js"></script>
 </body>

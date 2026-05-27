@@ -1,1016 +1,434 @@
 // ============================================
-// ★ GRADIUS TRIBUTE ★
-// 횡스크롤 슈팅 - 그라디우스 스타일
-// 아이템 자동 적용 + 누적 강화
+// OX 상식퀴즈 - 10개 분야 선택 + 100문제 도전
 // ============================================
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const uiOverlay = document.getElementById('ui-overlay');
 
-let W, H;
-function resizeCanvas() {
-    // 모바일: 화면 전체를 채움 (가로 모드 기준)
-    W = window.innerWidth;
-    H = window.innerHeight;
-    canvas.width = W;
-    canvas.height = H;
-    canvas.style.width = W + 'px';
-    canvas.style.height = H + 'px';
+const CATEGORIES = {
+    science: { name: '🔬 과학', icon: '🔬', questions: [
+        { q: "물은 100도에서 끓는다.", a: true, e: "1기압 기준으로 물의 끓는점은 100°C입니다." },
+        { q: "빛의 속도는 초속 약 30만 km이다.", a: true, e: "빛의 속도는 약 299,792km/s입니다." },
+        { q: "다이아몬드는 철보다 단단하다.", a: true, e: "다이아몬드는 모스 경도 10으로 가장 단단한 천연 광물입니다." },
+        { q: "소리는 진공에서도 전달된다.", a: false, e: "소리는 매질이 필요하므로 진공에서는 전달되지 않습니다." },
+        { q: "지구의 자전 방향은 동쪽에서 서쪽이다.", a: false, e: "지구는 서쪽에서 동쪽으로 자전합니다." },
+        { q: "인간의 뼈는 성인 기준 206개이다.", a: true, e: "성인의 뼈는 206개입니다." },
+        { q: "태양은 지구보다 약 109배 크다.", a: true, e: "태양의 지름은 지구의 약 109배입니다." },
+        { q: "혈액형은 A, B, O, AB 4가지이다.", a: true, e: "ABO 혈액형 체계에서는 4가지입니다." },
+        { q: "번개는 위에서 아래로만 친다.", a: false, e: "번개는 다양한 방향으로 발생합니다." },
+        { q: "달에는 중력이 없다.", a: false, e: "달의 중력은 지구의 약 1/6입니다." },
+        { q: "DNA는 이중나선 구조이다.", a: true, e: "왓슨과 크릭이 1953년 발견한 이중나선 구조입니다." },
+        { q: "수은은 상온에서 액체인 금속이다.", a: true, e: "수은은 상온에서 유일하게 액체 상태인 금속입니다." },
+        { q: "절대영도는 -273.15°C이다.", a: true, e: "절대영도(0K)는 -273.15°C입니다." },
+        { q: "전자레인지는 마이크로파를 이용한다.", a: true, e: "전자레인지는 마이크로파로 물 분자를 진동시켜 열을 발생시킵니다." },
+        { q: "물은 4°C에서 밀도가 가장 높다.", a: true, e: "물은 4°C에서 최대 밀도를 가집니다." },
+        { q: "인간의 뇌는 10%만 사용한다.", a: false, e: "이것은 속설이며, 실제로 뇌의 대부분 영역이 활용됩니다." },
+        { q: "지구에서 가장 풍부한 기체는 산소이다.", a: false, e: "대기의 약 78%는 질소이고, 산소는 약 21%입니다." },
+        { q: "무지개는 7가지 색으로 이루어져 있다.", a: true, e: "빨주노초파남보 7색입니다." },
+        { q: "소금은 NaCl이다.", a: true, e: "소금의 화학식은 염화나트륨(NaCl)입니다." },
+        { q: "지구는 태양계에서 세 번째 행성이다.", a: true, e: "수성-금성-지구 순서로 세 번째입니다." },
+    ]},
+    geography: { name: '🌍 지리', icon: '🌍', questions: [
+        { q: "세계에서 가장 큰 대륙은 아시아이다.", a: true, e: "아시아는 면적 약 4,457만 km²로 가장 큰 대륙입니다." },
+        { q: "나일강은 세계에서 가장 긴 강이다.", a: true, e: "나일강은 약 6,650km로 세계 최장 강입니다." },
+        { q: "호주는 남반구에 위치한다.", a: true, e: "호주는 남반구에 있는 대륙 국가입니다." },
+        { q: "에베레스트산은 아프리카에 있다.", a: false, e: "에베레스트산은 아시아 히말라야 산맥에 있습니다." },
+        { q: "러시아는 세계에서 면적이 가장 큰 나라이다.", a: true, e: "러시아는 약 1,710만 km²로 세계 최대 면적 국가입니다." },
+        { q: "사하라 사막은 남아메리카에 있다.", a: false, e: "사하라 사막은 아프리카 북부에 있습니다." },
+        { q: "일본은 섬나라이다.", a: true, e: "일본은 약 6,800개의 섬으로 이루어진 섬나라입니다." },
+        { q: "아마존 열대우림은 아프리카에 있다.", a: false, e: "아마존 열대우림은 남아메리카에 있습니다." },
+        { q: "태평양은 대서양보다 크다.", a: true, e: "태평양은 지구 표면의 약 1/3을 차지하는 가장 큰 대양입니다." },
+        { q: "캐나다는 미국보다 면적이 크다.", a: true, e: "캐나다는 약 998만 km²로 미국(약 983만)보다 큽니다." },
+        { q: "이집트의 수도는 카이로이다.", a: true, e: "이집트의 수도는 카이로입니다." },
+        { q: "남극은 대륙이다.", a: true, e: "남극은 대륙 위에 얼음이 덮인 형태입니다." },
+        { q: "중국의 인구는 세계 1위이다.", a: false, e: "2023년 기준 인도가 중국을 추월하여 세계 1위입니다." },
+        { q: "아프리카에는 54개 나라가 있다.", a: true, e: "아프리카 대륙에는 54개 국가가 있습니다." },
+        { q: "그린란드는 아프리카보다 크다.", a: false, e: "메르카토르 도법의 왜곡이며, 아프리카가 14배 더 큽니다." },
+        { q: "하와이는 아시아에 속한다.", a: false, e: "하와이는 미국의 주로 오세아니아/태평양에 위치합니다." },
+        { q: "지중해는 대서양과 연결되어 있다.", a: true, e: "지브롤터 해협을 통해 대서양과 연결됩니다." },
+        { q: "몽골은 바다가 없는 내륙국이다.", a: true, e: "몽골은 바다와 접하지 않는 내륙국입니다." },
+        { q: "브라질은 남아메리카에서 가장 큰 나라이다.", a: true, e: "브라질은 남미 면적의 약 47%를 차지합니다." },
+        { q: "영국은 섬나라이다.", a: true, e: "영국은 그레이트브리튼 섬과 아일랜드 섬 일부로 이루어진 섬나라입니다." },
+    ]},
+    history: { name: '📜 역사', icon: '📜', questions: [
+        { q: "제2차 세계대전은 1939년에 시작되었다.", a: true, e: "1939년 9월 1일 독일의 폴란드 침공으로 시작되었습니다." },
+        { q: "한글은 세종대왕이 만들었다.", a: true, e: "세종대왕이 1443년 훈민정음을 창제했습니다." },
+        { q: "피라미드는 로마인이 건설했다.", a: false, e: "피라미드는 고대 이집트인이 건설했습니다." },
+        { q: "임진왜란은 1592년에 일어났다.", a: true, e: "임진왜란은 1592년 일본의 조선 침략으로 시작되었습니다." },
+        { q: "프랑스 혁명은 18세기에 일어났다.", a: true, e: "프랑스 혁명은 1789년에 시작되었습니다." },
+        { q: "만리장성은 달에서도 보인다.", a: false, e: "실제로 달에서 만리장성은 보이지 않습니다." },
+        { q: "고려는 신라 다음에 세워진 나라이다.", a: true, e: "918년 왕건이 고려를 건국했습니다." },
+        { q: "링컨은 미국의 초대 대통령이다.", a: false, e: "미국 초대 대통령은 조지 워싱턴이며, 링컨은 16대입니다." },
+        { q: "독일 통일은 1990년에 이루어졌다.", a: true, e: "1990년 10월 3일 동서독이 통일되었습니다." },
+        { q: "조선은 약 500년간 지속되었다.", a: true, e: "조선은 1392~1897년, 약 505년간 지속되었습니다." },
+        { q: "클레오파트라는 로마인이다.", a: false, e: "클레오파트라는 이집트 프톨레마이오스 왕조의 파라오입니다." },
+        { q: "한국 전쟁은 1950년에 시작되었다.", a: true, e: "6·25 전쟁은 1950년 6월 25일 시작되었습니다." },
+        { q: "나폴레옹은 영국 사람이다.", a: false, e: "나폴레옹은 프랑스(코르시카 출신)의 군인이자 황제입니다." },
+        { q: "고구려, 백제, 신라를 삼국시대라 한다.", a: true, e: "한국의 삼국시대는 고구려·백제·신라 시대입니다." },
+        { q: "타이타닉호는 1912년에 침몰했다.", a: true, e: "타이타닉호는 1912년 4월 15일 침몰했습니다." },
+        { q: "이순신 장군은 고려시대 인물이다.", a: false, e: "이순신 장군은 조선시대 인물입니다." },
+        { q: "로마 제국은 1000년 이상 지속되었다.", a: true, e: "서로마 기준 약 500년, 동로마 포함 시 약 1500년입니다." },
+        { q: "광복절은 1945년 8월 15일이다.", a: true, e: "1945년 8월 15일 일본으로부터 해방되었습니다." },
+        { q: "콜럼버스는 1492년에 아메리카에 도착했다.", a: true, e: "1492년 10월 12일 바하마 제도에 도착했습니다." },
+        { q: "백제의 수도는 평양이었다.", a: false, e: "백제의 수도는 위례성, 웅진, 사비 등이며 평양은 고구려 수도입니다." },
+    ]},
+    culture: { name: '🎨 문화/예술', icon: '🎨', questions: [
+        { q: "모나리자를 그린 화가는 레오나르도 다빈치이다.", a: true, e: "모나리자는 레오나르도 다빈치의 작품입니다." },
+        { q: "베토벤은 이탈리아 작곡가이다.", a: false, e: "베토벤은 독일 출신 작곡가입니다." },
+        { q: "올림픽은 4년마다 개최된다.", a: true, e: "하계/동계 올림픽은 각각 4년 주기로 개최됩니다." },
+        { q: "축구 월드컵 우승 최다국은 브라질이다.", a: true, e: "브라질은 5회 우승으로 최다 우승국입니다." },
+        { q: "셰익스피어는 프랑스 작가이다.", a: false, e: "셰익스피어는 영국의 극작가입니다." },
+        { q: "피아노의 건반은 총 88개이다.", a: true, e: "표준 피아노는 88개의 건반을 가지고 있습니다." },
+        { q: "태권도는 일본에서 유래했다.", a: false, e: "태권도는 한국에서 유래한 무술입니다." },
+        { q: "바이올린은 현악기이다.", a: true, e: "바이올린은 4개의 현을 가진 현악기입니다." },
+        { q: "고흐는 생전에 그림을 많이 팔았다.", a: false, e: "고흐는 생전에 단 1점의 그림만 팔았다고 알려져 있습니다." },
+        { q: "FIFA 월드컵 첫 대회는 1930년에 열렸다.", a: true, e: "1930년 우루과이에서 첫 FIFA 월드컵이 개최되었습니다." },
+        { q: "모차르트는 오스트리아 출신이다.", a: true, e: "모차르트는 오스트리아 잘츠부르크 출신입니다." },
+        { q: "야구에서 스트라이크 3개면 아웃이다.", a: true, e: "3스트라이크는 삼진 아웃입니다." },
+        { q: "오페라의 유령은 뮤지컬이다.", a: true, e: "앤드루 로이드 웨버의 뮤지컬 작품입니다." },
+        { q: "농구 한 팀은 6명이 뛴다.", a: false, e: "농구는 한 팀 5명이 경기합니다." },
+        { q: "피카소는 스페인 출신 화가이다.", a: true, e: "피카소는 스페인 말라가 출신입니다." },
+        { q: "기타는 타악기이다.", a: false, e: "기타는 현악기(발현악기)입니다." },
+        { q: "배드민턴 셔틀콕에는 거위 깃털이 사용된다.", a: true, e: "공식 셔틀콕에는 거위 깃털 16개가 사용됩니다." },
+        { q: "해리포터의 작가는 J.K. 롤링이다.", a: true, e: "해리포터 시리즈는 J.K. 롤링의 작품입니다." },
+        { q: "축구 경기 시간은 전후반 합쳐 80분이다.", a: false, e: "축구는 전후반 각 45분, 총 90분입니다." },
+        { q: "BTS는 7인조 그룹이다.", a: true, e: "BTS는 7명의 멤버로 구성된 그룹입니다." },
+    ]},
+    daily: { name: '💡 생활상식', icon: '💡', questions: [
+        { q: "비타민C는 열에 약하다.", a: true, e: "비타민C는 열과 산소에 의해 쉽게 파괴됩니다." },
+        { q: "꿀은 상하지 않는 식품이다.", a: true, e: "꿀은 수분 함량이 낮고 산성이라 세균이 번식하기 어렵습니다." },
+        { q: "커피는 원래 열매이다.", a: true, e: "커피는 커피나무 열매(체리)의 씨앗을 가공한 것입니다." },
+        { q: "사람의 지문은 평생 변하지 않는다.", a: true, e: "지문은 태아 때 형성되어 평생 변하지 않습니다." },
+        { q: "토마토는 채소이다.", a: false, e: "식물학적으로 토마토는 과일(열매)입니다." },
+        { q: "바나나는 나무에서 자란다.", a: false, e: "바나나는 나무가 아닌 여러해살이 풀(초본식물)에서 자랍니다." },
+        { q: "낙타의 혹에는 물이 저장되어 있다.", a: false, e: "낙타의 혹에는 지방이 저장되어 있습니다." },
+        { q: "성인의 몸은 약 60~70%가 물이다.", a: true, e: "성인 체중의 약 60~70%는 수분입니다." },
+        { q: "모기는 암컷만 피를 빤다.", a: true, e: "암컷 모기만 산란을 위해 흡혈합니다." },
+        { q: "계란은 냉장고 문에 보관하는 것이 좋다.", a: false, e: "문은 온도 변화가 커서 안쪽 선반이 더 좋습니다." },
+        { q: "하품은 전염된다.", a: true, e: "하품은 거울 뉴런의 작용으로 전염됩니다." },
+        { q: "손톱은 죽은 세포이다.", a: true, e: "손톱은 케라틴으로 이루어진 죽은 세포입니다." },
+        { q: "채소를 오래 삶으면 영양소가 파괴된다.", a: true, e: "수용성 비타민은 열과 물에 의해 손실됩니다." },
+        { q: "사람은 하루에 약 1.5리터의 침을 분비한다.", a: true, e: "성인은 하루 약 1~1.5리터의 침을 분비합니다." },
+        { q: "머리카락은 한 달에 약 1cm 자란다.", a: true, e: "머리카락은 평균 한 달에 약 1~1.5cm 자랍니다." },
+        { q: "감기는 추위 때문에 걸린다.", a: false, e: "감기는 바이러스 감염으로 걸리며, 추위 자체가 원인은 아닙니다." },
+        { q: "초콜릿은 개에게 유독하다.", a: true, e: "초콜릿의 테오브로민 성분은 개에게 독성이 있습니다." },
+        { q: "사람의 혀에는 맛을 느끼는 영역이 정해져 있다.", a: false, e: "혀 전체에서 모든 맛을 느낄 수 있습니다." },
+        { q: "양파를 자를 때 눈물이 나는 것은 황 성분 때문이다.", a: true, e: "양파의 황 화합물이 눈을 자극합니다." },
+        { q: "우유를 마시면 키가 큰다.", a: false, e: "키는 유전과 전반적 영양 상태에 의해 결정되며, 우유만으로 키가 크지 않습니다." },
+    ]},
+    tech: { name: '💻 IT/기술', icon: '💻', questions: [
+        { q: "인터넷의 www는 World Wide Web의 약자이다.", a: true, e: "WWW는 World Wide Web의 약자입니다." },
+        { q: "1바이트는 8비트이다.", a: true, e: "1바이트(Byte) = 8비트(bit)입니다." },
+        { q: "GPS는 미국이 개발한 시스템이다.", a: true, e: "GPS는 미국 국방부가 개발한 위성항법시스템입니다." },
+        { q: "5G는 5번째 세대 이동통신을 의미한다.", a: true, e: "5G는 5th Generation의 약자입니다." },
+        { q: "LED는 Light Emitting Diode의 약자이다.", a: true, e: "LED는 발광 다이오드입니다." },
+        { q: "블루투스는 적외선 통신 기술이다.", a: false, e: "블루투스는 무선 주파수(RF) 기반 근거리 통신 기술입니다." },
+        { q: "HTML은 프로그래밍 언어이다.", a: false, e: "HTML은 마크업 언어이지 프로그래밍 언어가 아닙니다." },
+        { q: "USB는 Universal Serial Bus의 약자이다.", a: true, e: "USB는 범용 직렬 버스입니다." },
+        { q: "세계 최초의 컴퓨터는 애니악(ENIAC)이다.", a: true, e: "1946년 개발된 ENIAC이 최초의 범용 전자 컴퓨터입니다." },
+        { q: "애플의 창업자는 빌 게이츠이다.", a: false, e: "애플의 창업자는 스티브 잡스이며, 빌 게이츠는 마이크로소프트 창업자입니다." },
+        { q: "SSD는 하드디스크보다 빠르다.", a: true, e: "SSD는 플래시 메모리 기반으로 HDD보다 훨씬 빠릅니다." },
+        { q: "파이썬(Python)은 뱀 이름에서 따왔다.", a: false, e: "영국 코미디 그룹 '몬티 파이썬'에서 따온 이름입니다." },
+        { q: "QR코드의 QR은 Quick Response의 약자이다.", a: true, e: "QR은 빠른 응답(Quick Response)을 의미합니다." },
+        { q: "와이파이(Wi-Fi)는 Wireless Fidelity의 약자이다.", a: false, e: "Wi-Fi는 특별한 약자가 아닌 브랜드명입니다." },
+        { q: "CPU는 컴퓨터의 두뇌 역할을 한다.", a: true, e: "CPU(중앙처리장치)는 연산과 제어를 담당합니다." },
+        { q: "안드로이드는 애플이 만든 운영체제이다.", a: false, e: "안드로이드는 구글이 개발한 모바일 운영체제입니다." },
+        { q: "이메일의 @는 '~에게'라는 뜻이다.", a: false, e: "@는 'at(~에서)'이라는 뜻으로 사용됩니다." },
+        { q: "4K 해상도는 가로 약 4000 픽셀이다.", a: true, e: "4K는 가로 해상도 약 3840~4096 픽셀을 의미합니다." },
+        { q: "RAM은 전원을 꺼도 데이터가 유지된다.", a: false, e: "RAM은 휘발성 메모리로 전원이 꺼지면 데이터가 사라집니다." },
+        { q: "유튜브는 구글 소유이다.", a: true, e: "구글이 2006년에 유튜브를 인수했습니다." },
+    ]},
+    animal: { name: '🐾 동물/자연', icon: '🐾', questions: [
+        { q: "고래는 포유류이다.", a: true, e: "고래는 폐로 호흡하는 해양 포유류입니다." },
+        { q: "펭귄은 남극에만 산다.", a: false, e: "펭귄은 남아프리카, 갈라파고스 등 남반구 여러 곳에 삽니다." },
+        { q: "문어는 심장이 3개이다.", a: true, e: "문어는 주심장 1개와 아가미심장 2개, 총 3개의 심장을 가집니다." },
+        { q: "코알라는 곰의 일종이다.", a: false, e: "코알라는 유대류로 곰과는 전혀 다른 동물입니다." },
+        { q: "벌새는 뒤로 날 수 있는 유일한 새이다.", a: true, e: "벌새는 날개를 8자로 움직여 뒤로 비행할 수 있습니다." },
+        { q: "기린의 목뼈 개수는 사람과 같다.", a: true, e: "기린도 사람과 같이 목뼈(경추)가 7개입니다." },
+        { q: "나비는 발로 맛을 느낀다.", a: true, e: "나비의 발에는 미각 수용체가 있어 맛을 감지합니다." },
+        { q: "타조는 날 수 있다.", a: false, e: "타조는 날지 못하는 새입니다." },
+        { q: "돌고래는 잠잘 때 뇌의 반쪽만 쉰다.", a: true, e: "돌고래는 반구수면으로 한쪽 뇌만 번갈아 잠을 잡니다." },
+        { q: "거미는 곤충이다.", a: false, e: "거미는 8개의 다리를 가진 거미류로 곤충(6다리)이 아닙니다." },
+        { q: "상어는 포유류이다.", a: false, e: "상어는 연골어류에 속하는 어류입니다." },
+        { q: "고양이는 단맛을 느끼지 못한다.", a: true, e: "고양이는 단맛 수용체가 없어 단맛을 느끼지 못합니다." },
+        { q: "개미는 자기 몸무게의 50배를 들 수 있다.", a: true, e: "개미는 체중의 10~50배 무게를 운반할 수 있습니다." },
+        { q: "금붕어의 기억력은 3초이다.", a: false, e: "금붕어는 수개월간 기억할 수 있습니다." },
+        { q: "박쥐는 새이다.", a: false, e: "박쥐는 날 수 있는 유일한 포유류입니다." },
+        { q: "카멜레온은 주변 색에 맞춰 색을 바꾼다.", a: false, e: "카멜레온의 색 변화는 주로 감정과 체온 조절 때문입니다." },
+        { q: "코끼리는 점프를 할 수 없다.", a: true, e: "코끼리는 체중 때문에 네 발이 동시에 땅을 떠날 수 없습니다." },
+        { q: "해마는 수컷이 새끼를 낳는다.", a: true, e: "해마는 수컷의 육아낭에서 새끼가 태어납니다." },
+        { q: "달팽이는 이빨이 없다.", a: false, e: "달팽이는 치설이라는 수천 개의 미세한 이빨을 가지고 있습니다." },
+        { q: "플라밍고는 태어날 때부터 분홍색이다.", a: false, e: "플라밍고는 회색으로 태어나며 먹이의 색소로 분홍색이 됩니다." },
+    ]},
+    korea: { name: '🇰🇷 한국상식', icon: '🇰🇷', questions: [
+        { q: "한국의 국화는 무궁화이다.", a: true, e: "대한민국의 국화는 무궁화입니다." },
+        { q: "대한민국의 수도는 서울이다.", a: true, e: "대한민국의 수도는 서울특별시입니다." },
+        { q: "제주도는 대한민국에서 가장 큰 섬이다.", a: true, e: "제주도는 면적 약 1,849km²로 한국 최대의 섬입니다." },
+        { q: "한글날은 10월 3일이다.", a: false, e: "한글날은 10월 9일이며, 10월 3일은 개천절입니다." },
+        { q: "대한민국 국보 1호는 숭례문이다.", a: true, e: "숭례문(남대문)은 대한민국 국보 제1호입니다." },
+        { q: "한국의 화폐 단위는 원(Won)이다.", a: true, e: "대한민국의 화폐 단위는 원(₩)입니다." },
+        { q: "독도는 울릉도보다 일본에 더 가깝다.", a: false, e: "독도는 울릉도에서 약 87km, 일본 오키섬에서 약 157km입니다." },
+        { q: "경복궁은 조선시대에 지어졌다.", a: true, e: "경복궁은 1395년 조선 태조 때 창건되었습니다." },
+        { q: "한라산은 백두산보다 높다.", a: false, e: "한라산은 1,947m, 백두산은 2,744m입니다." },
+        { q: "태극기의 가운데 원은 음양을 상징한다.", a: true, e: "태극기 중앙의 태극 문양은 음양의 조화를 상징합니다." },
+        { q: "김치는 유네스코 무형문화유산이다.", a: false, e: "김장 문화가 유네스코 무형문화유산이며, 김치 자체는 아닙니다." },
+        { q: "한국에서 가장 긴 강은 한강이다.", a: false, e: "한국에서 가장 긴 강은 낙동강(약 510km)입니다." },
+        { q: "광복절은 8월 15일이다.", a: true, e: "광복절은 매년 8월 15일입니다." },
+        { q: "한국의 국기는 태극기이다.", a: true, e: "대한민국의 국기는 태극기입니다." },
+        { q: "서울의 옛 이름은 한양이다.", a: true, e: "조선시대 서울의 이름은 한양(한성)이었습니다." },
+        { q: "한국은 반도 국가이다.", a: true, e: "한국은 한반도에 위치한 반도 국가입니다." },
+        { q: "삼성은 일본 기업이다.", a: false, e: "삼성은 대한민국의 기업입니다." },
+        { q: "한국의 전통 명절에는 설날과 추석이 있다.", a: true, e: "설날과 추석은 한국의 대표적인 전통 명절입니다." },
+        { q: "한국 프로야구는 10개 팀으로 운영된다.", a: true, e: "KBO 리그는 10개 구단으로 운영됩니다." },
+        { q: "비빔밥은 일본 음식이다.", a: false, e: "비빔밥은 한국의 전통 음식입니다." },
+    ]},
+    food: { name: '🍽️ 음식/요리', icon: '🍽️', questions: [
+        { q: "초밥은 한국에서 유래했다.", a: false, e: "초밥(스시)은 일본에서 유래한 음식입니다." },
+        { q: "파스타는 이탈리아 음식이다.", a: true, e: "파스타는 이탈리아의 대표적인 음식입니다." },
+        { q: "와사비는 고추의 일종이다.", a: false, e: "와사비는 십자화과 식물로 고추와는 다릅니다." },
+        { q: "카레는 인도에서 유래했다.", a: true, e: "카레는 인도에서 유래한 향신료 요리입니다." },
+        { q: "피자의 원산지는 미국이다.", a: false, e: "피자는 이탈리아 나폴리에서 유래했습니다." },
+        { q: "두부는 콩으로 만든다.", a: true, e: "두부는 콩을 갈아 만든 두유를 응고시킨 식품입니다." },
+        { q: "초콜릿의 원료는 카카오이다.", a: true, e: "초콜릿은 카카오 열매에서 추출한 카카오매스로 만듭니다." },
+        { q: "소주의 알코올 도수는 보통 40도이다.", a: false, e: "한국 소주는 보통 16~20도 정도입니다." },
+        { q: "된장은 발효식품이다.", a: true, e: "된장은 콩을 발효시켜 만든 전통 발효식품입니다." },
+        { q: "햄버거는 독일 함부르크에서 유래했다.", a: true, e: "함부르크 스테이크에서 유래하여 미국에서 발전했습니다." },
+        { q: "녹차와 홍차는 같은 나무에서 나온다.", a: true, e: "같은 차나무 잎을 발효 정도에 따라 녹차/홍차로 구분합니다." },
+        { q: "마요네즈의 주재료는 우유이다.", a: false, e: "마요네즈의 주재료는 달걀노른자와 식용유입니다." },
+        { q: "김밥은 일본의 마키를 모방한 것이다.", a: false, e: "김밥은 한국 고유의 음식으로 발전한 별개의 요리입니다." },
+        { q: "식빵의 유통기한은 보통 3일 정도이다.", a: true, e: "식빵은 상온에서 보통 2~3일 정도가 유통기한입니다." },
+        { q: "고추장은 매운맛만 있다.", a: false, e: "고추장은 매운맛, 단맛, 감칠맛이 복합적으로 있습니다." },
+        { q: "우유는 산성 식품이다.", a: false, e: "우유는 약알칼리성 식품입니다." },
+        { q: "라면은 한국에서 처음 만들어졌다.", a: false, e: "라면(인스턴트)은 일본에서 1958년 처음 개발되었습니다." },
+        { q: "올리브유는 식물성 기름이다.", a: true, e: "올리브유는 올리브 열매에서 추출한 식물성 기름입니다." },
+        { q: "치즈는 우유로 만든다.", a: true, e: "치즈는 우유를 응고·발효시켜 만든 유제품입니다." },
+        { q: "고구마는 뿌리 채소이다.", a: true, e: "고구마는 뿌리(덩이뿌리)를 먹는 채소입니다." },
+    ]},
+    body: { name: '🏥 인체/건강', icon: '🏥', questions: [
+        { q: "인간의 위산은 철을 녹일 수 있다.", a: true, e: "위산(염산)의 pH는 1~2로 매우 강합니다." },
+        { q: "성인의 뼈는 206개이다.", a: true, e: "성인의 뼈는 206개입니다." },
+        { q: "혈액은 심장에서 만들어진다.", a: false, e: "혈액은 골수에서 만들어집니다." },
+        { q: "인간의 대장은 소장보다 길다.", a: false, e: "소장은 약 6~7m, 대장은 약 1.5m입니다." },
+        { q: "사람의 체온은 보통 36.5도이다.", a: true, e: "정상 체온은 약 36.5~37°C입니다." },
+        { q: "비타민D는 햇빛을 받으면 체내에서 합성된다.", a: true, e: "자외선B를 받으면 피부에서 비타민D가 합성됩니다." },
+        { q: "인간은 산소 없이 5분 이상 생존할 수 없다.", a: false, e: "훈련된 사람은 10분 이상 숨을 참을 수 있지만, 일반적으로 뇌는 4~6분 후 손상됩니다." },
+        { q: "간은 재생 능력이 있다.", a: true, e: "간은 일부가 손상되어도 재생할 수 있는 장기입니다." },
+        { q: "사람의 피부는 가장 큰 장기이다.", a: true, e: "피부는 면적 약 1.5~2m²로 인체 최대 장기입니다." },
+        { q: "근시는 먼 곳이 잘 보이는 것이다.", a: false, e: "근시는 가까운 곳은 잘 보이지만 먼 곳이 흐리게 보입니다." },
+        { q: "인간의 뇌는 약 75%가 물이다.", a: true, e: "뇌의 약 73~75%는 수분으로 이루어져 있습니다." },
+        { q: "적혈구에는 핵이 있다.", a: false, e: "성숙한 적혈구는 핵이 없습니다." },
+        { q: "사람은 하루에 약 2만 번 호흡한다.", a: true, e: "성인은 하루 약 2만~2만5천 번 호흡합니다." },
+        { q: "인간의 뼈는 콘크리트보다 강하다.", a: true, e: "같은 무게 기준으로 뼈는 콘크리트보다 4배 강합니다." },
+        { q: "맹장은 아무 기능이 없다.", a: false, e: "맹장(충수)은 면역 기능과 장내 세균 저장소 역할을 합니다." },
+        { q: "사람의 눈은 약 1억 개의 색을 구분할 수 있다.", a: true, e: "인간의 눈은 약 1천만~1억 가지 색을 구분합니다." },
+        { q: "혈액형은 부모에게서 유전된다.", a: true, e: "ABO 혈액형은 부모의 유전자 조합으로 결정됩니다." },
+        { q: "사람의 위는 왼쪽에 있다.", a: true, e: "위는 복부 왼쪽 상부에 위치합니다." },
+        { q: "성인의 치아는 32개이다.", a: true, e: "사랑니 포함 성인 치아는 32개입니다." },
+        { q: "인간은 물 없이 일주일 이상 생존할 수 있다.", a: false, e: "보통 물 없이 3~5일 정도가 생존 한계입니다." },
+    ]},
+    math: { name: '🔢 수학/논리', icon: '🔢', questions: [
+        { q: "원주율(π)은 정확히 3.14이다.", a: false, e: "π는 무한소수로 약 3.14159...입니다." },
+        { q: "삼각형의 내각의 합은 180도이다.", a: true, e: "평면 삼각형의 세 내각의 합은 항상 180°입니다." },
+        { q: "0은 짝수이다.", a: true, e: "0은 2로 나누어 떨어지므로 짝수입니다." },
+        { q: "1은 소수이다.", a: false, e: "소수는 1보다 큰 자연수이므로, 1은 소수가 아닙니다." },
+        { q: "정사각형은 직사각형이다.", a: true, e: "정사각형은 직사각형의 특수한 경우입니다." },
+        { q: "2의 10제곱은 1024이다.", a: true, e: "2^10 = 1024입니다." },
+        { q: "원의 넓이 공식은 2πr이다.", a: false, e: "원의 넓이는 πr²이며, 2πr은 원의 둘레입니다." },
+        { q: "1+1=3이다.", a: false, e: "1+1=2입니다." },
+        { q: "100의 제곱근은 10이다.", a: true, e: "√100 = 10입니다." },
+        { q: "삼각형의 세 변 중 가장 긴 변은 빗변이다.", a: false, e: "빗변은 직각삼각형에서만 사용하는 용어입니다." },
+        { q: "0으로 나누기는 불가능하다.", a: true, e: "수학에서 0으로 나누기는 정의되지 않습니다." },
+        { q: "평행한 두 직선은 절대 만나지 않는다.", a: true, e: "유클리드 기하학에서 평행선은 만나지 않습니다." },
+        { q: "분수 1/3은 유한소수이다.", a: false, e: "1/3 = 0.333...으로 무한소수(순환소수)입니다." },
+        { q: "직각은 90도이다.", a: true, e: "직각은 정확히 90°입니다." },
+        { q: "음수 곱하기 음수는 양수이다.", a: true, e: "(-) × (-) = (+)입니다." },
+        { q: "정육면체의 면은 8개이다.", a: false, e: "정육면체의 면은 6개입니다." },
+        { q: "1km는 100m이다.", a: false, e: "1km = 1000m입니다." },
+        { q: "원의 지름은 반지름의 2배이다.", a: true, e: "지름 = 반지름 × 2입니다." },
+        { q: "10의 0제곱은 0이다.", a: false, e: "어떤 수의 0제곱은 1입니다 (10⁰ = 1)." },
+        { q: "삼각형에서 가장 큰 각의 대변이 가장 길다.", a: true, e: "삼각형에서 큰 각의 대변이 가장 깁니다." },
+    ]},
+};
+
+// 게임 상태
+const MAX_LIVES = 5;
+let questions = [];
+let currentIdx = 0;
+let lives = MAX_LIVES;
+let score = 0;
+let answered = false;
+let correctCount = 0;
+let selectedCategory = null;
+
+// 셔플 함수
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
 }
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
-window.addEventListener('orientationchange', () => { setTimeout(resizeCanvas, 100); });
-document.addEventListener('fullscreenchange', () => { setTimeout(resizeCanvas, 100); });
-document.addEventListener('webkitfullscreenchange', () => { setTimeout(resizeCanvas, 100); });
 
-// 전체화면 + 가로 잠금
+// 분야 선택 화면 표시
+function showTitle() {
+    document.getElementById('title-screen').style.display = 'flex';
+    document.getElementById('game-container').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'none';
+}
+
+// 분야 선택 후 게임 시작
+function selectCategory(catKey) {
+    SFX.init();
+    SFX.resume();
+    SFX.clickSound();
+    SFX.startBGM();
+
+    selectedCategory = catKey;
+    const cat = CATEGORIES[catKey];
+    questions = shuffle(cat.questions).slice(0, 100);
+    currentIdx = 0;
+    lives = MAX_LIVES;
+    score = 0;
+    correctCount = 0;
+    answered = false;
+
+    document.getElementById('title-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'none';
+    document.getElementById('game-container').style.display = 'flex';
+    document.getElementById('category-label').textContent = cat.name;
+    updateUI();
+    showQuestion();
+}
+
+// 문제 표시
+function showQuestion() {
+    answered = false;
+    const q = questions[currentIdx];
+    document.getElementById('question-number').textContent = `Q${currentIdx + 1}.`;
+    document.getElementById('question-text').textContent = q.q;
+    document.getElementById('explanation').textContent = '';
+    document.getElementById('explanation').classList.remove('show');
+    document.getElementById('btn-o').classList.remove('disabled');
+    document.getElementById('btn-x').classList.remove('disabled');
+    updateUI();
+}
+
+// 답변 처리
+function answer(userAnswer) {
+    if (answered) return;
+    answered = true;
+
+    SFX.init();
+    SFX.resume();
+    SFX.clickSound();
+
+    const q = questions[currentIdx];
+    const correct = (userAnswer === q.a);
+
+    document.getElementById('btn-o').classList.add('disabled');
+    document.getElementById('btn-x').classList.add('disabled');
+
+    const feedback = document.getElementById('feedback');
+    if (correct) {
+        score += 10;
+        correctCount++;
+        feedback.textContent = '⭕';
+        feedback.style.color = '#0e6';
+        feedback.style.textShadow = '0 0 30px #0e6';
+        setTimeout(() => SFX.correctSound(), 100);
+    } else {
+        lives--;
+        feedback.textContent = '❌';
+        feedback.style.color = '#f44';
+        feedback.style.textShadow = '0 0 30px #f44';
+        setTimeout(() => SFX.wrongSound(), 100);
+    }
+    feedback.classList.add('show');
+
+    const explanation = document.getElementById('explanation');
+    explanation.textContent = (correct ? '✅ 정답! ' : '❌ 오답! ') + q.e;
+    explanation.classList.add('show');
+
+    updateUI();
+
+    setTimeout(() => {
+        feedback.classList.remove('show');
+
+        if (lives <= 0) {
+            showResult(false);
+            return;
+        }
+        if (currentIdx >= questions.length - 1) {
+            showResult(true);
+            return;
+        }
+
+        currentIdx++;
+        showQuestion();
+    }, 1800);
+}
+
+// UI 업데이트
+function updateUI() {
+    const heartsStr = '❤️'.repeat(lives) + '🖤'.repeat(MAX_LIVES - lives);
+    document.getElementById('lives').textContent = heartsStr;
+    document.getElementById('progress').textContent = `${currentIdx + 1} / ${questions.length}`;
+    document.getElementById('score').textContent = `${score}점`;
+}
+
+// 결과 화면
+function showResult(cleared) {
+    SFX.stopBGM();
+
+    document.getElementById('game-container').style.display = 'none';
+    const resultScreen = document.getElementById('result-screen');
+    const title = document.getElementById('result-title');
+    const stats = document.getElementById('result-stats');
+
+    if (cleared) {
+        title.textContent = '🎉 축하합니다!';
+        title.style.color = '#0f0';
+        setTimeout(() => SFX.clearSound(), 300);
+    } else {
+        title.textContent = '💀 GAME OVER';
+        title.style.color = '#f44';
+        setTimeout(() => SFX.gameOverSound(), 300);
+    }
+
+    const catName = CATEGORIES[selectedCategory] ? CATEGORIES[selectedCategory].name : '';
+    stats.innerHTML = `
+        분야: ${catName}<br>
+        정답: ${correctCount}문제 / ${currentIdx + 1}문제<br>
+        점수: ${score}점<br>
+        ${cleared ? '전 문제 완주 성공!' : `${currentIdx + 1}번째 문제에서 탈락`}
+    `;
+
+    resultScreen.style.display = 'flex';
+}
+
+// 전체화면
 function goFullscreen() {
     const el = document.documentElement;
     const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
     if (rfs) {
         rfs.call(el).then(() => {
-            // 화면 방향을 가로로 잠금
             if (screen.orientation && screen.orientation.lock) {
                 screen.orientation.lock('landscape').catch(() => {});
             }
-            setTimeout(resizeCanvas, 200);
         }).catch(() => {});
     }
 }
 
-// 게임 시작 시 자동으로 전체화면 시도 (모바일)
-function tryFullscreenOnStart() {
-    if (isMobile && !document.fullscreenElement && !document.webkitFullscreenElement) {
-        goFullscreen();
-    }
-}
-
+// 모바일 감지 시 첫 터치에 전체화면
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window);
-
-// 게임 상태
-const STATE = { TITLE:0, PLAYING:1, GAMEOVER:2, BOSS_WARNING:3, PAUSED:4 };
-let gameState = STATE.TITLE;
-let score = 0, lives = 3, stage = 1, frame = 0;
-let highScore = parseInt(localStorage.getItem('gradiusHigh') || '0');
-let shakeTimer = 0, shakeIntensity = 0;
-let bossWarningTimer = 0;
-let totalKills = 0, maxCombo = 0;
-const VW = 640, VH = 480;
-
-// ============================================
-// 입력
-// ============================================
-const keys = {};
-let touchDragX = 0, touchDragY = 0, touchActive = false;
-let touchStartX = 0, touchStartY = 0;
-
-window.addEventListener('keydown', e => {
-    keys[e.code] = true;
-    if (e.code === 'Space') {
-        if (document.activeElement === document.getElementById('player-name')) return;
-        e.preventDefault();
-        if (gameState === STATE.TITLE || gameState === STATE.GAMEOVER) startGame();
-    }
-    if (e.code === 'KeyP') togglePause();
-    if (e.code === 'KeyM') toggleMute();
-});
-window.addEventListener('keyup', e => { keys[e.code] = false; });
-canvas.addEventListener('touchstart', handleTouch, { passive: false });
-canvas.addEventListener('touchmove', handleTouch, { passive: false });
-canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
-
-// 모바일: UI 오버레이/스코어 화면 위에서도 탭으로 게임 시작 가능하게
-uiOverlay.addEventListener('click', () => { if (gameState === STATE.TITLE) startGame(); });
-uiOverlay.addEventListener('touchend', (e) => { e.preventDefault(); if (gameState === STATE.TITLE) startGame(); }, { passive: false });
-document.getElementById('score-screen').addEventListener('click', (e) => {
-    if (e.target.id === 'player-name' || e.target.id === 'save-score-btn') return;
-    if (gameState === STATE.GAMEOVER) startGame();
-});
-document.getElementById('score-screen').addEventListener('touchend', (e) => {
-    if (e.target.id === 'player-name' || e.target.id === 'save-score-btn') return;
-    e.preventDefault();
-    if (gameState === STATE.GAMEOVER) startGame();
-}, { passive: false });
-
-function handleTouch(e) {
-    e.preventDefault();
-    if (gameState === STATE.TITLE) { startGame(); return; }
-    if (gameState === STATE.GAMEOVER) {
-        startGame();
-        return;
-    }
-    if (gameState !== STATE.PLAYING) return;
-    const touch = e.touches[0];
-    if (!touchActive) { touchStartX = touch.clientX; touchStartY = touch.clientY; touchActive = true; }
-    touchDragX = (touch.clientX - touchStartX) * 0.08;
-    touchDragY = (touch.clientY - touchStartY) * 0.08;
-    touchStartX += (touch.clientX - touchStartX) * 0.05;
-    touchStartY += (touch.clientY - touchStartY) * 0.05;
-}
-function handleTouchEnd(e) {
-    e.preventDefault();
-    if (e.touches.length === 0) { touchDragX = 0; touchDragY = 0; touchActive = false; }
+if (isMobile) {
+    document.addEventListener('touchstart', function onFirstTouch() {
+        goFullscreen();
+        document.removeEventListener('touchstart', onFirstTouch);
+    }, { once: true });
 }
 
-// ============================================
-// 파워업 상태 (자동 적용 + 누적)
-// ============================================
-const powerState = {
-    speedLevel: 0,     // 0~5
-    missileLevel: 0,   // 0~3
-    bulletLevel: 1,    // 1~5 (기본탄 강화)
-    laserLevel: 0,     // 0~3
-    optionCount: 0,    // 0~4
-    shieldHP: 0        // 0~5
-};
-let options = []; // 옵션(분신) 위치 배열
-let powerUpMessages = []; // 화면에 표시할 파워업 메시지
-
-// 아이템 종류
-const ITEM_TYPES = [
-    { id: 'SPEED', label: 'S', color: '#0f0', desc: 'SPEED UP' },
-    { id: 'MISSILE', label: 'M', color: '#f80', desc: 'MISSILE' },
-    { id: 'BULLET', label: 'P', color: '#0ff', desc: 'POWER UP' },
-    { id: 'LASER', label: 'L', color: '#f0f', desc: 'LASER' },
-    { id: 'OPTION', label: 'O', color: '#ff0', desc: 'OPTION' },
-    { id: 'SHIELD', label: '?', color: '#48f', desc: 'SHIELD' }
-];
-
-// 플레이어
-const player = {
-    x: 80, y: 240, width: 32, height: 16, speed: 3.5,
-    fireRate: 10, fireCooldown: 0,
-    alive: true, invincible: 0, combo: 0,
-    trail: []
-};
-
-// 게임 오브젝트
-let playerBullets = [], enemyBullets = [], enemies = [], items = [], particles = [], damageNumbers = [];
-let boss = null;
-let scrollSpeed = 1.5;
-
-// ============================================
-// 배경
-// ============================================
-let stars = [], bgLayers = [];
-function initStars() {
-    stars = [];
-    for (let i = 0; i < 100; i++) stars.push({ x: Math.random()*VW, y: Math.random()*VH, speed: Math.random()*2+0.5, size: Math.random()*1.5+0.5 });
-    bgLayers = [];
-    for (let i = 0; i < 3; i++) bgLayers.push({ x: Math.random()*VW, y: Math.random()*VH, r: Math.random()*80+30, color: `hsla(${200+Math.random()*60},50%,15%,0.04)`, speed: Math.random()*0.3+0.1 });
+// 뮤트 토글
+function toggleMute() {
+    SFX.init();
+    const muted = SFX.toggleMute();
+    document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
 }
-initStars();
-
-// ============================================
-// 게임 시작
-// ============================================
-function startGame() {
-    sfx.init(); sfx.resume(); sfx.stopBGM(); sfx.gameStart();
-    tryFullscreenOnStart();
-    gameState = STATE.PLAYING;
-    uiOverlay.style.display = 'none';
-    hideScoreScreen();
-    score = 0; lives = 5; stage = 1; frame = 0; totalKills = 0; maxCombo = 0;
-    player.x = 80; player.y = 240; player.alive = true;
-    player.invincible = 90; player.speed = 3.5; player.fireRate = 10;
-    player.fireCooldown = 0; player.combo = 0; player.trail = [];
-    playerBullets = []; enemyBullets = []; items = []; particles = []; damageNumbers = [];
-    boss = null; options = []; powerUpMessages = [];
-    resetPowerState();
-    spawnWave();
-    setTimeout(() => sfx.playStageMusic(stage), 600);
-}
-
-function resetPowerState() {
-    powerState.speedLevel = 0;
-    powerState.missileLevel = 0;
-    powerState.bulletLevel = 1;
-    powerState.laserLevel = 0;
-    powerState.optionCount = 0;
-    powerState.shieldHP = 0;
-    options = [];
-}
-
-function togglePause() {
-    if (gameState === STATE.PLAYING) { gameState = STATE.PAUSED; document.getElementById('pause-btn').textContent = '▶'; }
-    else if (gameState === STATE.PAUSED) { gameState = STATE.PLAYING; document.getElementById('pause-btn').textContent = '⏸'; }
-}
-
-// ============================================
-// 아이템 자동 적용 (먹으면 바로 효과, 누적 강화)
-// ============================================
-function applyItem(itemType) {
-    let msg = '';
-    switch (itemType.id) {
-        case 'SPEED':
-            if (powerState.speedLevel < 5) { powerState.speedLevel++; player.speed = 3.5 + powerState.speedLevel * 0.8; }
-            msg = `SPEED Lv.${powerState.speedLevel}`;
-            break;
-        case 'MISSILE':
-            if (powerState.missileLevel < 3) powerState.missileLevel++;
-            msg = `MISSILE Lv.${powerState.missileLevel}`;
-            break;
-        case 'BULLET':
-            if (powerState.bulletLevel < 5) { powerState.bulletLevel++; player.fireRate = Math.max(5, 10 - powerState.bulletLevel); }
-            msg = `POWER Lv.${powerState.bulletLevel}`;
-            break;
-        case 'LASER':
-            if (powerState.laserLevel < 3) powerState.laserLevel++;
-            msg = `LASER Lv.${powerState.laserLevel}`;
-            break;
-        case 'OPTION':
-            if (powerState.optionCount < 4) {
-                powerState.optionCount++;
-                options.push({ x: player.x, y: player.y });
-            }
-            msg = `OPTION x${powerState.optionCount}`;
-            break;
-        case 'SHIELD':
-            powerState.shieldHP = Math.min(5, powerState.shieldHP + 2);
-            msg = `SHIELD +2 (${powerState.shieldHP})`;
-            break;
-    }
-    sfx.powerUp();
-    powerUpMessages.push({ text: msg, color: itemType.color, life: 90, x: player.x, y: player.y - 20 });
-}
-
-// ============================================
-// 웨이브 생성 (스테이지 전환 없이 연속)
-// ============================================
-let wavePattern = 0, waveSpawnTimer = 0, waveTotalToSpawn = 0, waveSpawned = 0, waveSpawnInterval = 60;
-let stageTransitionMsg = 0; // 스테이지 전환 메시지 타이머
-
-function spawnWave() {
-    wavePattern = 0; waveSpawned = 0; waveSpawnTimer = 0;
-    if (stage % 5 === 0) {
-        bossWarningTimer = 90; gameState = STATE.BOSS_WARNING;
-        sfx.bossWarning(); waveTotalToSpawn = 0; return;
-    }
-    waveTotalToSpawn = 8 + stage * 2;
-    waveSpawnInterval = Math.max(35, 70 - stage * 2);
-    const batchSize = Math.min(4 + Math.floor(stage / 2), waveTotalToSpawn);
-    spawnEnemyBatch(batchSize);
-    waveSpawned += batchSize;
-}
-
-function updateWaveSpawning() {
-    if (waveSpawned >= waveTotalToSpawn) return;
-    waveSpawnTimer++;
-    if (waveSpawnTimer >= waveSpawnInterval) {
-        waveSpawnTimer = 0;
-        const batchSize = Math.min(4 + Math.floor(stage / 2), waveTotalToSpawn - waveSpawned);
-        spawnEnemyBatch(batchSize);
-        waveSpawned += batchSize;
-    }
-}
-
-function spawnEnemyBatch(count) {
-    const patterns = ['line', 'sine', 'circle', 'vshape'];
-    const pat = patterns[wavePattern % patterns.length];
-    wavePattern++;
-    for (let i = 0; i < count; i++) {
-        let ex = VW + 40 + i * 35, ey = 50 + Math.random() * (VH - 100);
-        let type = 'grunt';
-        if (Math.random() < 0.1 + stage * 0.02) type = 'mid';
-        if (Math.random() < 0.03 + stage * 0.01) type = 'heavy';
-        enemies.push(mkEnemy(ex, ey, type, pat, i, count));
-    }
-}
-
-function mkEnemy(x, y, type, pattern, idx, total) {
-    let hp = 1, w = 20, h = 16, pts = 100, speed = 1.5 + stage * 0.08;
-    if (type === 'mid') { hp = 1 + Math.floor(stage/4); w = 26; h = 22; pts = 300; speed *= 0.8; }
-    if (type === 'heavy') { hp = 2 + Math.floor(stage/3); w = 30; h = 26; pts = 500; speed *= 0.6; }
-    return { x, y, width: w, height: h, type, hp, maxHp: hp, alive: true, pts, speed, pattern, idx, total, time: 0, startX: x, startY: y, flashTimer: 0, dropItem: Math.random() < 0.08 };
-}
-
-function spawnBoss() {
-    const bossHP = 30 + stage * 8;
-    const isFinal = stage >= 20;
-    boss = { x: VW+60, y: VH/2, targetX: VW-100, width: 70, height: 70, hp: bossHP, maxHp: bossHP, alive: true, phase: 0, phaseTimer: 0, moveDir: 1, moveSpeed: 1.2, attackTimer: 0, flashTimer: 0, isFinal };
-    enemies = []; waveTotalToSpawn = 0; waveSpawned = 0;
-    gameState = STATE.PLAYING;
-    sfx.playBossMusic(isFinal);
-}
-
-// ============================================
-// 메인 업데이트
-// ============================================
-function update() {
-    frame++;
-    stars.forEach(s => { s.x -= s.speed * scrollSpeed; if (s.x < 0) { s.x = VW; s.y = Math.random() * VH; } });
-    bgLayers.forEach(p => { p.x -= p.speed * scrollSpeed; if (p.x < -p.r) { p.x = VW + p.r; p.y = Math.random() * VH; } });
-
-    if (gameState === STATE.PAUSED) return;
-    if (gameState === STATE.BOSS_WARNING) { bossWarningTimer--; if (bossWarningTimer <= 0) spawnBoss(); return; }
-    if (gameState !== STATE.PLAYING) return;
-    if (shakeTimer > 0) shakeTimer--;
-    if (stageTransitionMsg > 0) stageTransitionMsg--;
-
-    updatePlayer();
-    updatePlayerBullets();
-    updateWaveSpawning();
-    updateEnemies();
-    updateEnemyBullets();
-    if (boss && boss.alive) updateBoss();
-    updateItems();
-    updateParticles();
-    updateOptions();
-    powerUpMessages.forEach(m => { m.y -= 0.6; m.life--; });
-    powerUpMessages = powerUpMessages.filter(m => m.life > 0);
-    damageNumbers.forEach(d => { d.x -= 0.5; d.y -= 0.8; d.life--; });
-    damageNumbers = damageNumbers.filter(d => d.life > 0);
-    checkCollisions();
-    checkWaveClear();
-}
-
-// ============================================
-// 플레이어 업데이트
-// ============================================
-function updatePlayer() {
-    if (!player.alive) return;
-    let dx = 0, dy = 0;
-    if (keys['ArrowLeft'] || keys['KeyA']) dx = -1;
-    if (keys['ArrowRight'] || keys['KeyD']) dx = 1;
-    if (keys['ArrowUp'] || keys['KeyW']) dy = -1;
-    if (keys['ArrowDown'] || keys['KeyS']) dy = 1;
-    if (touchActive) { dx += touchDragX; dy += touchDragY; }
-    const len = Math.sqrt(dx*dx + dy*dy);
-    if (len > 0) { dx /= len; dy /= len; }
-    player.x += dx * player.speed;
-    player.y += dy * player.speed;
-    player.x = Math.max(20, Math.min(VW - 20, player.x));
-    player.y = Math.max(24, Math.min(VH - 40, player.y));
-    player.trail.unshift({ x: player.x, y: player.y });
-    if (player.trail.length > 200) player.trail.pop();
-    player.fireCooldown--;
-    if (player.fireCooldown <= 0) { firePlayerBullets(); player.fireCooldown = player.fireRate; }
-    if (player.invincible > 0) player.invincible--;
-}
-
-// ============================================
-// 발사
-// ============================================
-function firePlayerBullets() {
-    const lvl = powerState.bulletLevel;
-    const lsr = powerState.laserLevel;
-    if (lsr > 0) {
-        // 레이저 (레벨에 따라 굵기/길이 증가)
-        playerBullets.push({ x: player.x+18, y: player.y, vx: 14, vy: 0, width: 30+lsr*10, height: 1+lsr, type: 'laser', pierce: true });
-        sfx.shootLaser();
-    } else {
-        // 기본탄 (레벨에 따라 발수 증가)
-        if (lvl >= 1) playerBullets.push({ x: player.x+18, y: player.y, vx: 10, vy: 0, width: 12, height: 3, type: 'normal' });
-        if (lvl >= 2) playerBullets.push({ x: player.x+14, y: player.y-6, vx: 10, vy: -0.5, width: 10, height: 2, type: 'normal' });
-        if (lvl >= 3) playerBullets.push({ x: player.x+14, y: player.y+6, vx: 10, vy: 0.5, width: 10, height: 2, type: 'normal' });
-        if (lvl >= 4) playerBullets.push({ x: player.x+10, y: player.y-10, vx: 8, vy: -2, width: 10, height: 2, type: 'normal' });
-        if (lvl >= 5) playerBullets.push({ x: player.x+10, y: player.y+10, vx: 8, vy: 2, width: 10, height: 2, type: 'normal' });
-        sfx.shoot();
-    }
-    // 미사일
-    if (powerState.missileLevel > 0 && frame % (25 - powerState.missileLevel * 5) === 0) {
-        playerBullets.push({ x: player.x, y: player.y+10, vx: 2, vy: 4, width: 5, height: 8, type: 'missile' });
-        if (powerState.missileLevel >= 2) playerBullets.push({ x: player.x, y: player.y-10, vx: 2, vy: -4, width: 5, height: 8, type: 'missile_up' });
-        sfx.shootMissile();
-    }
-    // 옵션 발사
-    options.forEach(opt => {
-        if (lsr > 0) playerBullets.push({ x: opt.x+10, y: opt.y, vx: 14, vy: 0, width: 25+lsr*5, height: 1+lsr*0.5, type: 'laser', pierce: true });
-        else playerBullets.push({ x: opt.x+10, y: opt.y, vx: 10, vy: 0, width: 10, height: 2, type: 'option_bullet' });
-    });
-}
-
-function updatePlayerBullets() {
-    playerBullets.forEach(b => {
-        b.x += b.vx; b.y += b.vy;
-        if (b.type === 'missile' && b.y > VH - 30) { b.vy = 0; b.vx = 5; }
-        if (b.type === 'missile_up' && b.y < 30) { b.vy = 0; b.vx = 5; }
-    });
-    playerBullets = playerBullets.filter(b => b.x < VW+50 && b.x > -20 && b.y < VH+20 && b.y > -20);
-}
-
-// ============================================
-// 옵션 업데이트
-// ============================================
-function updateOptions() {
-    options.forEach((opt, i) => {
-        const delay = (i + 1) * 16;
-        if (player.trail.length > delay) {
-            const t = player.trail[delay];
-            opt.x += (t.x - opt.x) * 0.25;
-            opt.y += (t.y - opt.y) * 0.25;
-        }
-    });
-}
-
-// ============================================
-// 적 업데이트
-// ============================================
-function updateEnemies() {
-    enemies.forEach(e => {
-        if (!e.alive) return;
-        e.time++;
-        if (e.flashTimer > 0) e.flashTimer--;
-        switch (e.pattern) {
-            case 'line': e.x -= e.speed; break;
-            case 'sine': e.x -= e.speed; e.y = e.startY + Math.sin(e.time * 0.05) * 55; break;
-            case 'circle': e.x -= e.speed * 0.7; e.y = e.startY + Math.sin(e.time * 0.04 + e.idx) * 40; break;
-            case 'vshape': e.x -= e.speed; e.y = e.startY + (e.idx - e.total/2) * 6 * Math.sin(e.time * 0.03); break;
-        }
-        if (e.x < -50) e.alive = false;
-        if (e.time > 60 && Math.random() < 0.003 + stage * 0.0008) {
-            const a = Math.atan2(player.y - e.y, player.x - e.x);
-            enemyBullets.push({ x: e.x, y: e.y, vx: Math.cos(a)*(2.5+stage*0.1), vy: Math.sin(a)*(2.5+stage*0.1), size: 4 });
-        }
-    });
-}
-
-// ============================================
-// 보스 업데이트
-// ============================================
-function updateBoss() {
-    const b = boss;
-    if (b.x > b.targetX) { b.x -= 1.5; return; }
-    b.phaseTimer++; if (b.flashTimer > 0) b.flashTimer--;
-    b.y += b.moveSpeed * b.moveDir;
-    if (b.y < 80 || b.y > VH - 80) b.moveDir *= -1;
-    const hpRatio = b.hp / b.maxHp;
-    b.attackTimer++;
-    if (hpRatio > 0.6) {
-        if (b.attackTimer % 45 === 0) {
-            enemyBullets.push({ x: b.x-40, y: b.y, vx: -4, vy: 0, size: 5 });
-            enemyBullets.push({ x: b.x-40, y: b.y-15, vx: -3.5, vy: -0.8, size: 4 });
-            enemyBullets.push({ x: b.x-40, y: b.y+15, vx: -3.5, vy: 0.8, size: 4 });
-        }
-    } else if (hpRatio > 0.3) {
-        if (b.attackTimer % 50 === 0) { for (let i=-2;i<=2;i++) { const a=Math.PI+i*0.2; enemyBullets.push({x:b.x-35,y:b.y,vx:Math.cos(a)*3.5,vy:Math.sin(a)*3.5,size:4}); } }
-        b.moveSpeed = 1.5;
-    } else {
-        if (b.attackTimer % 35 === 0) { for (let i=0;i<8;i++) { const a=(Math.PI*2/8)*i+b.phaseTimer*0.03; enemyBullets.push({x:b.x,y:b.y,vx:Math.cos(a)*3,vy:Math.sin(a)*3,size:3}); } }
-        b.moveSpeed = 2.0;
-    }
-}
-
-function updateEnemyBullets() {
-    enemyBullets.forEach(b => { b.x += b.vx; b.y += b.vy; });
-    enemyBullets = enemyBullets.filter(b => b.x > -20 && b.x < VW+20 && b.y > -20 && b.y < VH+20);
-}
-function updateItems() { items.forEach(it => { it.x -= 1.2; it.time++; }); items = items.filter(it => it.x > -30); }
-function updateParticles() { particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.02; p.life--; }); particles = particles.filter(p => p.life > 0); }
-
-// ============================================
-// 충돌
-// ============================================
-function checkCollisions() {
-    playerBullets.forEach(b => {
-        if (boss && boss.alive && hitTest(b, boss)) {
-            if (!b.pierce) b.x = VW+100;
-            boss.hp--; boss.flashTimer = 8; sfx.hitEnemy();
-            createExplosion(b.x, b.y, '#fff', 3);
-            if (boss.hp <= 0) {
-                boss.alive = false; score += 10000+stage*2000; totalKills++;
-                sfx.explodeBoss(); shakeTimer = 30; shakeIntensity = 12;
-                for (let i=0;i<50;i++) createExplosion(boss.x+(Math.random()-0.5)*80, boss.y+(Math.random()-0.5)*80, `hsl(${Math.random()*360},100%,60%)`, 4);
-                damageNumbers.push({x:boss.x,y:boss.y,text:`BOSS +${10000+stage*2000}`,life:60,color:'#f0f'});
-                // 보스 처치 시 아이템 3개 드롭
-                for (let i=0;i<3;i++) dropItem(boss.x+(Math.random()-0.5)*60, boss.y+(Math.random()-0.5)*40);
-            }
-        }
-        enemies.forEach(e => {
-            if (!e.alive) return;
-            if (hitTest(b, e)) {
-                if (!b.pierce) b.x = VW+100;
-                e.hp--; e.flashTimer = 5;
-                if (e.hp <= 0) {
-                    e.alive = false; player.combo++; totalKills++;
-                    if (player.combo > maxCombo) maxCombo = player.combo;
-                    const bonus = Math.min(player.combo, 8);
-                    const pts = e.pts * bonus; score += pts;
-                    createExplosion(e.x, e.y, getEnemyColor(e.type), 10);
-                    sfx.explodeEnemy();
-                    if (player.combo > 1) sfx.combo(player.combo);
-                    damageNumbers.push({x:e.x,y:e.y,text:pts.toString(),life:30,color:'#ff0'});
-                    if (e.dropItem) dropItem(e.x, e.y);
-                } else { sfx.hitEnemy(); }
-            }
-        });
-    });
-    // 적 총알 vs 플레이어
-    if (player.alive && player.invincible <= 0) {
-        enemyBullets.forEach(b => {
-            if (Math.sqrt((b.x-player.x)**2+(b.y-player.y)**2) < 13) { b.x = -100; playerHit(); }
-        });
-        enemies.forEach(e => {
-            if (!e.alive) return;
-            if (hitTest(player, e)) { e.alive = false; createExplosion(e.x,e.y,'#f80',8); playerHit(); }
-        });
-    }
-    // 아이템 획득 (넓은 판정)
-    for (let i = items.length-1; i >= 0; i--) {
-        const it = items[i];
-        if (Math.abs(it.x - player.x) < 24 && Math.abs(it.y - player.y) < 20) {
-            items.splice(i, 1);
-            applyItem(it.itemType);
-            createExplosion(it.x, it.y, it.itemType.color, 6);
-        }
-    }
-}
-
-function dropItem(x, y) {
-    const type = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
-    items.push({ x, y, width: 20, height: 20, time: 0, itemType: type });
-}
-
-function hitTest(a, b) { return Math.abs(a.x-b.x) < (a.width+b.width)/2 && Math.abs(a.y-b.y) < (a.height+b.height)/2; }
-function getEnemyColor(type) { return type === 'heavy' ? '#f0f' : type === 'mid' ? '#f80' : '#4f4'; }
-function createExplosion(x, y, color, count=10) {
-    for (let i=0;i<count;i++) { const a=(Math.PI*2/count)*i+Math.random()*0.3, sp=Math.random()*3+1; particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:25+Math.random()*15,maxLife:40,color,size:Math.random()*3+1.5}); }
-}
-
-function playerHit() {
-    if (powerState.shieldHP > 0) {
-        powerState.shieldHP--; shakeTimer = 5; shakeIntensity = 3;
-        createExplosion(player.x, player.y, '#08f', 6); sfx.shieldBlock(); return;
-    }
-    lives--; player.combo = 0; shakeTimer = 15; shakeIntensity = 8;
-    createExplosion(player.x, player.y, '#0ff', 20); sfx.playerHit();
-    if (lives <= 0) {
-        player.alive = false; gameState = STATE.GAMEOVER; sfx.stopBGM();
-        if (score > highScore) { highScore = score; localStorage.setItem('gradiusHigh', highScore.toString()); }
-        sfx.playGameOverMusic();
-        setTimeout(() => showScoreScreen(), 1500);
-    } else {
-        player.invincible = 180;
-        // 파워 1단계 다운 (전부 리셋 아님)
-        if (powerState.bulletLevel > 1) powerState.bulletLevel--;
-        if (powerState.missileLevel > 0) powerState.missileLevel--;
-        if (powerState.laserLevel > 0) powerState.laserLevel--;
-        if (powerState.speedLevel > 0) { powerState.speedLevel--; player.speed = 3.5 + powerState.speedLevel * 0.8; }
-        player.fireRate = Math.max(5, 10 - powerState.bulletLevel);
-    }
-}
-
-// 스테이지 클리어 → 멈추지 않고 바로 다음 스테이지
-function checkWaveClear() {
-    if (waveSpawned < waveTotalToSpawn) return;
-    const allDead = enemies.filter(e => e.alive).length === 0 && (!boss || !boss.alive);
-    if (!allDead) return;
-    if (boss && !boss.alive) boss = null;
-    // 바로 다음 스테이지로 (멈춤 없음)
-    stage++;
-    score += (stage - 1) * 2000;
-    stageTransitionMsg = 120; // 2초간 "STAGE X" 표시
-    sfx.stageClear();
-    // BGM 변경
-    if (stage % 5 !== 0) sfx.playStageMusic(stage);
-    spawnWave();
-}
-
-// ============================================
-// 렌더링
-// ============================================
-function render() {
-    const scX = W/VW, scY = H/VH;
-    ctx.save(); ctx.scale(scX, scY);
-    if (shakeTimer > 0) ctx.translate((Math.random()-0.5)*shakeIntensity, (Math.random()-0.5)*shakeIntensity);
-    // 배경
-    ctx.fillStyle = '#020210'; ctx.fillRect(0, 0, VW, VH);
-    bgLayers.forEach(p => { const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r); g.addColorStop(0,p.color); g.addColorStop(1,'transparent'); ctx.fillStyle=g; ctx.fillRect(p.x-p.r,p.y-p.r,p.r*2,p.r*2); });
-    stars.forEach(s => { ctx.fillStyle=`rgba(200,220,255,${0.4+s.speed*0.3})`; ctx.fillRect(s.x,s.y,s.size,s.size*0.5); });
-
-    if (gameState === STATE.PLAYING || gameState === STATE.GAMEOVER || gameState === STATE.PAUSED) renderGame();
-    if (gameState === STATE.BOSS_WARNING) renderBossWarning();
-    if (gameState === STATE.PAUSED) renderPause();
-    ctx.restore();
-}
-
-function renderBossWarning() {
-    const alpha = Math.sin(frame*0.2)*0.3+0.7;
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#f00'; ctx.font = 'bold 28px "Courier New"'; ctx.textAlign = 'center';
-    ctx.shadowColor = '#f00'; ctx.shadowBlur = 20;
-    ctx.fillText('⚠ WARNING ⚠', VW/2, VH/2-10);
-    ctx.font = '16px "Courier New"'; ctx.fillStyle = '#ff0';
-    ctx.fillText('BOSS APPROACHING', VW/2, VH/2+20);
-    ctx.shadowBlur = 0; ctx.globalAlpha = 1; drawHUD();
-}
-
-function renderPause() {
-    ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0,0,VW,VH);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 24px "Courier New"'; ctx.textAlign = 'center';
-    ctx.fillText('PAUSED', VW/2, VH/2);
-    ctx.font = '12px "Courier New"'; ctx.fillStyle = '#aaa';
-    ctx.fillText('Press P to resume', VW/2, VH/2+25);
-}
-
-function renderGame() {
-    // 플레이어 총알
-    playerBullets.forEach(b => {
-        if (b.type === 'laser') {
-            ctx.shadowColor = '#0ff'; ctx.shadowBlur = 6;
-            const lg = ctx.createLinearGradient(b.x-b.width/2,b.y,b.x+b.width/2,b.y);
-            lg.addColorStop(0,'#fff'); lg.addColorStop(0.5,'#0ef'); lg.addColorStop(1,'#06a');
-            ctx.fillStyle = lg; ctx.fillRect(b.x-b.width/2, b.y-b.height/2, b.width, b.height);
-            ctx.shadowBlur = 0;
-        } else if (b.type === 'missile' || b.type === 'missile_up') {
-            ctx.fillStyle = '#f80';
-            ctx.beginPath(); ctx.moveTo(b.x+3,b.y); ctx.lineTo(b.x-3,b.y-3); ctx.lineTo(b.x-3,b.y+3); ctx.closePath(); ctx.fill();
-            ctx.fillStyle = 'rgba(255,200,100,0.4)'; ctx.beginPath(); ctx.arc(b.x-4,b.y,2,0,Math.PI*2); ctx.fill();
-        } else {
-            ctx.shadowColor = '#0ff'; ctx.shadowBlur = 3;
-            ctx.fillStyle = '#0ef'; ctx.fillRect(b.x-b.width/2, b.y-1.5, b.width, 3);
-            ctx.shadowBlur = 0;
-        }
-    });
-
-    // 적
-    enemies.forEach(e => { if (e.alive) drawEnemy(e); });
-    // 보스
-    if (boss && boss.alive) drawBoss();
-
-    // 적 총알
-    enemyBullets.forEach(b => {
-        ctx.shadowColor = '#f44'; ctx.shadowBlur = 4;
-        const grad = ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.size);
-        grad.addColorStop(0,'#fff'); grad.addColorStop(0.5,'#f84'); grad.addColorStop(1,'rgba(255,0,0,0)');
-        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(b.x,b.y,b.size+1,0,Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-    });
-
-    // 아이템 (크고 눈에 띄게 - 깜빡이는 캡슐)
-    items.forEach(it => {
-        const bob = Math.sin(it.time * 0.12) * 3;
-        const blink = Math.sin(it.time * 0.2) * 0.3 + 0.7;
-        ctx.save(); ctx.translate(it.x, it.y + bob);
-        ctx.globalAlpha = blink;
-        // 큰 빛나는 원형 배경
-        ctx.shadowColor = it.itemType.color; ctx.shadowBlur = 12;
-        ctx.fillStyle = '#000'; ctx.strokeStyle = it.itemType.color; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-        // 내부 색상 채움
-        ctx.fillStyle = it.itemType.color + '44';
-        ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.fill();
-        // 글자 (크게)
-        ctx.fillStyle = '#fff'; ctx.font = 'bold 12px "Courier New"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(it.itemType.label, 0, 1);
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.restore();
-    });
-
-    // 옵션 (분신) - 밝은 오렌지 구체
-    options.forEach((opt, i) => {
-        ctx.save(); ctx.translate(opt.x, opt.y);
-        ctx.shadowColor = '#f80'; ctx.shadowBlur = 10;
-        const g = ctx.createRadialGradient(0,0,0,0,0,8);
-        g.addColorStop(0,'#fff'); g.addColorStop(0.4,'#fa0'); g.addColorStop(1,'#840');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0,0,8,0,Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0; ctx.restore();
-    });
-
-    // 플레이어
-    if (player.alive && (player.invincible <= 0 || Math.floor(frame/3)%2 === 0)) drawPlayer();
-    // 실드
-    if (powerState.shieldHP > 0) {
-        ctx.strokeStyle = `rgba(0,180,255,${0.5+Math.sin(frame*0.1)*0.2})`;
-        ctx.lineWidth = 2.5; ctx.shadowColor = '#08f'; ctx.shadowBlur = 8;
-        ctx.beginPath(); ctx.ellipse(player.x-2, player.y, 22, 16, 0, 0, Math.PI*2); ctx.stroke();
-        ctx.shadowBlur = 0;
-    }
-
-    // 파티클
-    particles.forEach(p => { ctx.globalAlpha=p.life/(p.maxLife||40); ctx.fillStyle=p.color; ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size); });
-    ctx.globalAlpha = 1;
-
-    // 데미지 넘버
-    damageNumbers.forEach(d => { ctx.globalAlpha=Math.min(1,d.life/20); ctx.fillStyle=d.color; ctx.font='bold 11px "Courier New"'; ctx.textAlign='center'; ctx.fillText(d.text,d.x,d.y); });
-    ctx.globalAlpha = 1;
-
-    // 파워업 메시지 (화면 중앙 상단에 표시)
-    powerUpMessages.forEach(m => {
-        ctx.globalAlpha = Math.min(1, m.life / 30);
-        ctx.fillStyle = m.color; ctx.font = 'bold 13px "Courier New"'; ctx.textAlign = 'center';
-        ctx.shadowColor = m.color; ctx.shadowBlur = 6;
-        ctx.fillText(m.text, m.x, m.y);
-        ctx.shadowBlur = 0;
-    });
-    ctx.globalAlpha = 1;
-
-    // 스테이지 전환 메시지 (멈추지 않고 표시만)
-    if (stageTransitionMsg > 0) {
-        const alpha = stageTransitionMsg > 90 ? (120 - stageTransitionMsg) / 30 : Math.min(1, stageTransitionMsg / 30);
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = '#ff0'; ctx.font = 'bold 22px "Courier New"'; ctx.textAlign = 'center';
-        ctx.shadowColor = '#ff0'; ctx.shadowBlur = 10;
-        ctx.fillText(`STAGE ${stage}`, VW/2, VH/2 - 30);
-        ctx.font = '12px "Courier New"'; ctx.fillStyle = '#0ff';
-        ctx.fillText(`+${(stage-1)*2000}`, VW/2, VH/2);
-        ctx.shadowBlur = 0; ctx.globalAlpha = 1;
-    }
-
-    drawHUD();
-    drawPowerStatus();
-}
-
-// ============================================
-// 플레이어 그리기 (만화풍 빅바이퍼)
-// ============================================
-function drawPlayer() {
-    ctx.save(); ctx.translate(player.x, player.y);
-
-    // 엔진 불꽃 (만화풍 - 밝고 역동적)
-    const fLen = 12 + Math.random() * 8;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath(); ctx.moveTo(-18, -2); ctx.lineTo(-18-fLen*0.3, 0); ctx.lineTo(-18, 2); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#4cf';
-    ctx.beginPath(); ctx.moveTo(-18, -4); ctx.lineTo(-18-fLen, 0); ctx.lineTo(-18, 4); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = 'rgba(0,100,255,0.4)';
-    ctx.beginPath(); ctx.moveTo(-16, -6); ctx.lineTo(-16-fLen*0.7, 0); ctx.lineTo(-16, 6); ctx.closePath(); ctx.fill();
-
-    // 본체 (만화풍 - 둥글고 볼륨감 있는 빅바이퍼)
-    // 메인 바디 (그라데이션)
-    const bodyGrad = ctx.createLinearGradient(0, -10, 0, 10);
-    bodyGrad.addColorStop(0, '#4488cc'); bodyGrad.addColorStop(0.3, '#ffffff');
-    bodyGrad.addColorStop(0.5, '#ddeeff'); bodyGrad.addColorStop(1, '#224488');
-    ctx.fillStyle = bodyGrad;
-    ctx.beginPath();
-    ctx.moveTo(20, 0);
-    ctx.quadraticCurveTo(16, -7, 6, -8);
-    ctx.quadraticCurveTo(-4, -9, -16, -5);
-    ctx.lineTo(-18, -3); ctx.lineTo(-18, 3);
-    ctx.quadraticCurveTo(-4, 9, 6, 8);
-    ctx.quadraticCurveTo(16, 7, 20, 0);
-    ctx.closePath(); ctx.fill();
-
-    // 외곽선 (만화풍 두꺼운 라인)
-    ctx.strokeStyle = '#113366'; ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(20, 0);
-    ctx.quadraticCurveTo(16, -7, 6, -8);
-    ctx.quadraticCurveTo(-4, -9, -16, -5);
-    ctx.lineTo(-18, -3); ctx.lineTo(-18, 3);
-    ctx.quadraticCurveTo(-4, 9, 6, 8);
-    ctx.quadraticCurveTo(16, 7, 20, 0);
-    ctx.closePath(); ctx.stroke();
-
-    // 날개 (상)
-    const wingGrad = ctx.createLinearGradient(0, -8, 0, -18);
-    wingGrad.addColorStop(0, '#3366aa'); wingGrad.addColorStop(1, '#112244');
-    ctx.fillStyle = wingGrad;
-    ctx.beginPath(); ctx.moveTo(2, -8); ctx.lineTo(-6, -18); ctx.lineTo(-14, -16); ctx.lineTo(-10, -8); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = '#113366'; ctx.lineWidth = 1.2; ctx.stroke();
-    // 날개 (하)
-    ctx.fillStyle = wingGrad;
-    ctx.beginPath(); ctx.moveTo(2, 8); ctx.lineTo(-6, 18); ctx.lineTo(-14, 16); ctx.lineTo(-10, 8); ctx.closePath(); ctx.fill();
-    ctx.stroke();
-
-    // 콕핏 (밝은 하이라이트)
-    const cockpitGrad = ctx.createRadialGradient(8, -2, 0, 8, -2, 5);
-    cockpitGrad.addColorStop(0, '#ffffff'); cockpitGrad.addColorStop(0.5, '#88ddff');
-    cockpitGrad.addColorStop(1, '#2266aa');
-    ctx.fillStyle = cockpitGrad;
-    ctx.beginPath(); ctx.ellipse(8, -1, 5, 3, -0.1, 0, Math.PI*2); ctx.fill();
-    ctx.strokeStyle = '#1155aa'; ctx.lineWidth = 0.8; ctx.stroke();
-
-    // 기수 하이라이트
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.beginPath(); ctx.ellipse(14, -3, 4, 1.5, -0.3, 0, Math.PI*2); ctx.fill();
-
-    // 날개팁 에너지 (파워 레벨 표시)
-    if (powerState.bulletLevel >= 3 || powerState.laserLevel >= 1) {
-        ctx.fillStyle = `hsl(${frame*4%360},100%,70%)`;
-        ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 5;
-        ctx.beginPath(); ctx.arc(-6, -18, 2.5, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(-6, 18, 2.5, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
-    }
-
-    ctx.restore();
-}
-
-// ============================================
-// 적 그리기 (만화풍)
-// ============================================
-// 적 그리기 (동물 아이콘)
-// ============================================
-const ENEMY_ANIMALS = {
-    grunt: ['🐛', '🦟', '🐝', '🪲', '🦗', '🐜'],
-    mid: ['🦇', '🦅', '🦉', '🐍', '🦂', '🕷️'],
-    heavy: ['🐉', '🦖', '🐊', '🦈', '🐙', '🦑']
-};
-
-function drawEnemy(e) {
-    ctx.save(); ctx.translate(e.x, e.y);
-    const flash = e.flashTimer > 0;
-    const animals = ENEMY_ANIMALS[e.type] || ENEMY_ANIMALS.grunt;
-    const animalIdx = (e.idx || 0) % animals.length;
-    const emoji = animals[animalIdx];
-    const size = e.type === 'heavy' ? 26 : e.type === 'mid' ? 22 : 18;
-
-    // 피격 시 흰색 배경 플래시
-    if (flash) {
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.beginPath(); ctx.arc(0, 0, size * 0.6, 0, Math.PI * 2); ctx.fill();
-    }
-
-    // 동물 이모지
-    ctx.font = `${size}px sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(emoji, 0, 2);
-
-    // HP바 (대형/중형만)
-    if (e.maxHp > 1) {
-        const barW = size * 0.8;
-        ctx.fillStyle = '#333'; ctx.fillRect(-barW/2, size*0.55, barW, 3);
-        ctx.fillStyle = e.type === 'heavy' ? '#f0f' : '#f80';
-        ctx.fillRect(-barW/2, size*0.55, barW * (e.hp / e.maxHp), 3);
-    }
-    ctx.restore();
-}
-
-// ============================================
-// 보스 그리기 (스테이지마다 다른 보스)
-// ============================================
-const BOSS_DESIGNS = [
-    { emoji: '🐲', name: 'DRAGON', bodyColor: '#440000', coreColor: '#ff4400', lineColor: '#ff6600' },
-    { emoji: '👾', name: 'ALIEN', bodyColor: '#002244', coreColor: '#00ffff', lineColor: '#0088ff' },
-    { emoji: '🤖', name: 'MECHA', bodyColor: '#222222', coreColor: '#ffff00', lineColor: '#888888' },
-    { emoji: '👹', name: 'DEMON', bodyColor: '#330022', coreColor: '#ff00ff', lineColor: '#aa0066' },
-    { emoji: '🦑', name: 'KRAKEN', bodyColor: '#001133', coreColor: '#44ffaa', lineColor: '#006644' },
-    { emoji: '💀', name: 'DEATH', bodyColor: '#111111', coreColor: '#ffffff', lineColor: '#444444' },
-    { emoji: '🐺', name: 'FENRIR', bodyColor: '#1a1a2a', coreColor: '#8888ff', lineColor: '#4444aa' },
-    { emoji: '🦁', name: 'BEAST', bodyColor: '#2a1a00', coreColor: '#ffaa00', lineColor: '#885500' }
-];
-
-function drawBoss() {
-    const b = boss; ctx.save(); ctx.translate(b.x, b.y);
-    const pulse = Math.sin(frame * 0.04) * 0.03 + 1, flash = b.flashTimer > 0;
-    ctx.scale(pulse, pulse);
-
-    const designIdx = (Math.floor(stage / 5) - 1) % BOSS_DESIGNS.length;
-    const design = BOSS_DESIGNS[designIdx >= 0 ? designIdx : 0];
-
-    // 메인 바디
-    const bodyG = ctx.createRadialGradient(0, 0, 0, 0, 0, 50);
-    bodyG.addColorStop(0, flash ? '#555' : design.bodyColor);
-    bodyG.addColorStop(0.8, flash ? '#222' : '#000');
-    ctx.fillStyle = bodyG;
-    ctx.beginPath();
-    ctx.moveTo(-50, 0); ctx.quadraticCurveTo(-45, -35, -20, -40);
-    ctx.quadraticCurveTo(10, -38, 40, -20); ctx.quadraticCurveTo(55, -5, 50, 0);
-    ctx.quadraticCurveTo(55, 5, 40, 20); ctx.quadraticCurveTo(10, 38, -20, 40);
-    ctx.quadraticCurveTo(-45, 35, -50, 0);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = flash ? '#f44' : design.lineColor; ctx.lineWidth = 2.5; ctx.stroke();
-
-    // 장갑 디테일
-    ctx.strokeStyle = flash ? '#f88' : design.lineColor + '88'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(-35, -25); ctx.lineTo(-15, -15); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-35, 25); ctx.lineTo(-15, 15); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(30, -15); ctx.lineTo(15, -8); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(30, 15); ctx.lineTo(15, 8); ctx.stroke();
-
-    // 보스 이모지 (중앙에 크게)
-    ctx.font = '36px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(design.emoji, 0, 0);
-
-    // 코어 글로우
-    ctx.shadowColor = flash ? '#f00' : design.coreColor; ctx.shadowBlur = 15;
-    ctx.strokeStyle = design.coreColor; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    // 에너지 링
-    ctx.strokeStyle = `${design.coreColor}44`; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.ellipse(0, 0, 45, 25, frame * 0.01, 0, Math.PI * 2); ctx.stroke();
-
-    // 포대
-    ctx.fillStyle = '#333'; ctx.strokeStyle = '#666'; ctx.lineWidth = 1;
-    [[-52, -8, 14, 6], [-52, 2, 14, 6], [32, -18, 12, 5], [32, 13, 12, 5]].forEach(([rx, ry, rw, rh]) => {
-        ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh);
-    });
-
-    // 보스 이름
-    ctx.fillStyle = design.coreColor; ctx.font = 'bold 9px "Courier New"'; ctx.textAlign = 'center';
-    ctx.fillText(design.name, 0, -48);
-
-    // HP바
-    ctx.fillStyle = '#111'; ctx.fillRect(-40, 52, 80, 6);
-    const hpR = b.hp / b.maxHp;
-    ctx.fillStyle = hpR > 0.5 ? '#0f0' : hpR > 0.25 ? '#ff0' : '#f00';
-    ctx.fillRect(-40, 52, 80 * hpR, 6);
-    ctx.strokeStyle = '#888'; ctx.lineWidth = 1; ctx.strokeRect(-40, 52, 80, 6);
-
-    ctx.restore();
-}
-
-// ============================================
-// HUD
-// ============================================
-function drawHUD() {
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px "Courier New"'; ctx.textAlign = 'left';
-    ctx.fillText(`SCORE ${score.toString().padStart(8,'0')}`, 8, 16);
-    ctx.textAlign = 'center'; ctx.fillStyle = '#aaa';
-    ctx.fillText(`HIGH ${highScore.toString().padStart(8,'0')}`, VW/2, 16);
-    ctx.textAlign = 'right'; ctx.fillStyle = '#ff0';
-    ctx.fillText(`STAGE ${stage}`, VW-8, 16);
-    // 라이프
-    for (let i=0;i<lives;i++) { ctx.fillStyle='#0cf'; ctx.beginPath(); ctx.moveTo(18+i*18,VH-8); ctx.lineTo(12+i*18,VH-2); ctx.lineTo(24+i*18,VH-2); ctx.closePath(); ctx.fill(); }
-    // 콤보
-    if (player.combo > 1) { ctx.textAlign='center'; ctx.fillStyle=`hsl(${frame*5%360},100%,70%)`; ctx.font='bold 12px "Courier New"'; ctx.fillText(`${player.combo} COMBO!`,VW/2,32); }
-    if (boss && boss.alive) { ctx.textAlign='center'; ctx.fillStyle='#f44'; ctx.font='bold 10px "Courier New"'; ctx.fillText('★ BOSS BATTLE ★',VW/2,44); }
-}
-
-// ============================================
-// 파워 상태 표시 (우측 하단)
-// ============================================
-function drawPowerStatus() {
-    const sx = VW - 130, sy = VH - 55;
-    ctx.fillStyle = 'rgba(0,0,20,0.7)'; ctx.fillRect(sx-4, sy-2, 128, 50);
-    ctx.strokeStyle = '#335'; ctx.lineWidth = 1; ctx.strokeRect(sx-4, sy-2, 128, 50);
-    ctx.font = '9px "Courier New"'; ctx.textAlign = 'left';
-    const stats = [
-        { label: 'SPD', level: powerState.speedLevel, max: 5, color: '#0f0' },
-        { label: 'POW', level: powerState.bulletLevel-1, max: 4, color: '#0ff' },
-        { label: 'MSL', level: powerState.missileLevel, max: 3, color: '#f80' },
-        { label: 'LSR', level: powerState.laserLevel, max: 3, color: '#f0f' },
-        { label: 'OPT', level: powerState.optionCount, max: 4, color: '#ff0' },
-        { label: 'SLD', level: powerState.shieldHP, max: 5, color: '#48f' }
-    ];
-    stats.forEach((s, i) => {
-        const x = sx + (i % 3) * 42;
-        const y = sy + Math.floor(i / 3) * 22;
-        ctx.fillStyle = '#888'; ctx.fillText(s.label, x, y + 8);
-        for (let j = 0; j < s.max; j++) {
-            ctx.fillStyle = j < s.level ? s.color : '#222';
-            ctx.fillRect(x + j * 8, y + 11, 6, 4);
-        }
-    });
-}
-
-// ============================================
-// 스코어보드
-// ============================================
-const BLOB_URL = 'https://jsonblob.com/api/jsonBlob';
-let onlineBlobId = localStorage.getItem('gradiusBlobId') || '';
-function getToday() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function getLocalScores() { try { return JSON.parse(localStorage.getItem('gradiusScores')||'[]'); } catch { return []; } }
-function saveLocalScores(s) { localStorage.setItem('gradiusScores', JSON.stringify(s)); }
-
-async function fetchOnlineScores() {
-    if (!onlineBlobId) return null;
-    try { const res = await fetch(`${BLOB_URL}/${onlineBlobId}`, {headers:{'Content-Type':'application/json','Accept':'application/json'}}); if (res.ok) { const d=await res.json(); return d.scores||[]; } } catch(e) {}
-    return null;
-}
-async function pushOnlineScore(entry) {
-    try {
-        let scores = await fetchOnlineScores(); if (!scores) scores = getLocalScores();
-        scores.push(entry); scores.sort((a,b)=>b.score-a.score); if (scores.length>200) scores.length=200;
-        const body = JSON.stringify({scores});
-        if (!onlineBlobId) { const res=await fetch(BLOB_URL,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body}); if(res.ok){const loc=res.headers.get('Location')||res.headers.get('location');if(loc){onlineBlobId=loc.split('/').pop();localStorage.setItem('gradiusBlobId',onlineBlobId);}} }
-        else { await fetch(`${BLOB_URL}/${onlineBlobId}`,{method:'PUT',headers:{'Content-Type':'application/json','Accept':'application/json'},body}); }
-        return scores;
-    } catch(e) { return null; }
-}
-
-function showScoreScreen() {
-    const el=document.getElementById('score-screen');
-    document.getElementById('final-score').textContent=`SCORE: ${score.toLocaleString()} | STAGE ${stage} | KILLS ${totalKills} | MAX COMBO ${maxCombo}`;
-    document.getElementById('name-input-area').style.display='block';
-    document.getElementById('player-name').value=localStorage.getItem('gradiusLastName')||'';
-    renderLeaderboards(); el.style.display='block';
-    setTimeout(()=>document.getElementById('player-name').focus(),100);
-}
-function hideScoreScreen() { document.getElementById('score-screen').style.display='none'; }
-
-async function saveScore() {
-    const name=document.getElementById('player-name').value.trim()||'???';
-    localStorage.setItem('gradiusLastName',name);
-    const entry={name,score,stage,kills:totalKills,combo:maxCombo,date:getToday()};
-    const local=getLocalScores(); local.push(entry); local.sort((a,b)=>b.score-a.score); if(local.length>200)local.length=200; saveLocalScores(local);
-    document.getElementById('name-input-area').style.display='none';
-    const online=await pushOnlineScore(entry); if(online) saveLocalScores(online);
-    renderLeaderboards();
-}
-async function renderLeaderboards() {
-    const today=getToday(); let scores=await fetchOnlineScores(); if(!scores) scores=getLocalScores(); else saveLocalScores(scores);
-    const todayS=scores.filter(s=>s.date===today).sort((a,b)=>b.score-a.score).slice(0,20);
-    const allS=[...scores].sort((a,b)=>b.score-a.score).slice(0,20);
-    document.getElementById('today-scores').innerHTML=todayS.length===0?'<span style="color:#666">기록 없음</span>':todayS.map((s,i)=>`<div style="color:${i===0?'#ff0':'#ccc'}">${i+1}. ${s.name} ${s.score.toLocaleString()} (S${s.stage})</div>`).join('');
-    document.getElementById('all-scores').innerHTML=allS.length===0?'<span style="color:#666">기록 없음</span>':allS.map((s,i)=>`<div style="color:${i===0?'#ff0':'#ccc'}">${i+1}. ${s.name} ${s.score.toLocaleString()} (S${s.stage})</div>`).join('');
-}
-async function showTitleScores() {
-    let scores=await fetchOnlineScores(); if(!scores) scores=getLocalScores();
-    const top5=[...scores].sort((a,b)=>b.score-a.score).slice(0,5);
-    const el=document.getElementById('title-scores');
-    if(el) el.innerHTML=top5.length===0?'':'<div style="margin-top:10px;color:#f80;font-size:11px;">🏆 TOP SCORES</div>'+top5.map((s,i)=>`<div style="color:${i===0?'#ff0':'#aaa'};font-size:11px;">${i+1}. ${s.name} - ${s.score.toLocaleString()}</div>`).join('');
-}
-
-// ============================================
-// 유틸리티 & 게임 루프
-// ============================================
-function toggleMute() { const m=sfx.toggleMute(); document.getElementById('mute-btn').textContent=m?'🔇':'🔊'; }
-document.getElementById('player-name').addEventListener('keydown', e => { if(e.code==='Enter'){e.preventDefault();saveScore();} });
-
-function gameLoop() { update(); render(); requestAnimationFrame(gameLoop); }
-uiOverlay.style.display = 'block';
-showTitleScores();
-gameLoop();
