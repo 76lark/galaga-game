@@ -1,109 +1,207 @@
 // ============================================
-// OX 상식퀴즈 - 10개 분야 × 50문제
+// OX 상식퀴즈 - 14개 분야 × 200문제 (JSON 로드)
 // ============================================
 
 const CATEGORIES = {
-    science: { name: '🔬 과학', icon: '🔬', questions: [
-        { q: "물은 100도에서 끓는다.", a: true, e: "1기압 기준으로 물의 끓는점은 100°C입니다." },
-        { q: "빛의 속도는 초속 약 30만 km이다.", a: true, e: "빛의 속도는 약 299,792km/s입니다." },
-        { q: "다이아몬드는 철보다 단단하다.", a: true, e: "다이아몬드는 모스 경도 10으로 가장 단단한 천연 광물입니다." },
-        { q: "소리는 진공에서도 전달된다.", a: false, e: "소리는 매질이 필요하므로 진공에서는 전달되지 않습니다." },
-        { q: "지구의 자전 방향은 동쪽에서 서쪽이다.", a: false, e: "지구는 서쪽에서 동쪽으로 자전합니다." },
-        { q: "인간의 뼈는 성인 기준 206개이다.", a: true, e: "성인의 뼈는 206개입니다." },
-        { q: "태양은 지구보다 약 109배 크다.", a: true, e: "태양의 지름은 지구의 약 109배입니다." },
-        { q: "혈액형은 A, B, O, AB 4가지이다.", a: true, e: "ABO 혈액형 체계에서는 4가지입니다." },
-        { q: "번개는 위에서 아래로만 친다.", a: false, e: "번개는 다양한 방향으로 발생합니다." },
-        { q: "달에는 중력이 없다.", a: false, e: "달의 중력은 지구의 약 1/6입니다." },
-        { q: "DNA는 이중나선 구조이다.", a: true, e: "왓슨과 크릭이 1953년 발견한 이중나선 구조입니다." },
-        { q: "수은은 상온에서 액체인 금속이다.", a: true, e: "수은은 상온에서 유일하게 액체 상태인 금속입니다." },
-        { q: "절대영도는 -273.15°C이다.", a: true, e: "절대영도(0K)는 -273.15°C입니다." },
-        { q: "전자레인지는 마이크로파를 이용한다.", a: true, e: "전자레인지는 마이크로파로 물 분자를 진동시켜 열을 발생시킵니다." },
-        { q: "물은 4°C에서 밀도가 가장 높다.", a: true, e: "물은 4°C에서 최대 밀도를 가집니다." },
-        { q: "인간의 뇌는 10%만 사용한다.", a: false, e: "이것은 속설이며, 실제로 뇌의 대부분 영역이 활용됩니다." },
-        { q: "지구에서 가장 풍부한 기체는 산소이다.", a: false, e: "대기의 약 78%는 질소이고, 산소는 약 21%입니다." },
-        { q: "무지개는 7가지 색으로 이루어져 있다.", a: true, e: "빨주노초파남보 7색입니다." },
-        { q: "소금은 NaCl이다.", a: true, e: "소금의 화학식은 염화나트륨(NaCl)입니다." },
-        { q: "지구는 태양계에서 세 번째 행성이다.", a: true, e: "수성-금성-지구 순서로 세 번째입니다." },
-        { q: "헬륨은 공기보다 무겁다.", a: false, e: "헬륨은 공기보다 가벼워서 풍선이 뜹니다." },
-        { q: "식물도 호흡을 한다.", a: true, e: "식물도 산소를 소비하고 이산화탄소를 배출하는 호흡을 합니다." },
-        { q: "금은 녹슬지 않는다.", a: true, e: "금은 화학적으로 매우 안정적이어서 산화(녹)가 일어나지 않습니다." },
-        { q: "목성은 태양계에서 가장 큰 행성이다.", a: true, e: "목성은 지름이 지구의 약 11배인 태양계 최대 행성입니다." },
-        { q: "얼음은 물보다 무겁다.", a: false, e: "얼음은 물보다 밀도가 낮아 물에 뜹니다." },
-        { q: "원자는 눈으로 볼 수 있다.", a: false, e: "원자는 너무 작아서 일반 현미경으로도 볼 수 없습니다." },
-        { q: "태양은 고체이다.", a: false, e: "태양은 수소와 헬륨으로 이루어진 플라즈마(기체) 상태입니다." },
-        { q: "전기는 빛의 속도로 이동한다.", a: false, e: "전기 신호는 빛의 속도에 가깝지만 정확히 같지는 않습니다." },
-        { q: "화산 폭발 시 용암의 온도는 1000°C 이상이다.", a: true, e: "용암의 온도는 보통 700~1200°C입니다." },
-        { q: "산소는 무색무취의 기체이다.", a: true, e: "산소는 색도 냄새도 없는 기체입니다." },
-        { q: "달은 스스로 빛을 낸다.", a: false, e: "달은 태양빛을 반사하여 밝게 보이는 것입니다." },
-        { q: "소리는 물속에서 공기보다 빠르게 전달된다.", a: true, e: "물속에서 소리는 공기보다 약 4배 빠르게 전달됩니다." },
-        { q: "지구의 핵은 주로 철과 니켈로 이루어져 있다.", a: true, e: "지구 핵은 주로 철과 니켈로 구성되어 있습니다." },
-        { q: "비행기는 공기가 없으면 날 수 없다.", a: true, e: "비행기 날개는 공기의 양력을 이용하므로 공기가 필수입니다." },
-        { q: "다이아몬드와 연필심은 같은 원소로 되어 있다.", a: true, e: "둘 다 탄소(C)로 이루어져 있으며 구조만 다릅니다." },
-        { q: "지구에서 달까지의 거리는 약 38만 km이다.", a: true, e: "지구-달 평균 거리는 약 384,400km입니다." },
-        { q: "자석의 N극과 N극은 서로 끌어당긴다.", a: false, e: "같은 극끼리는 밀어내고, 다른 극끼리 끌어당깁니다." },
-        { q: "우주에서는 소리가 들리지 않는다.", a: true, e: "우주는 진공이므로 소리를 전달할 매질이 없습니다." },
-        { q: "인간의 몸에는 철분이 포함되어 있다.", a: true, e: "혈액의 헤모글로빈에 철분이 포함되어 있습니다." },
-        { q: "번개와 천둥은 동시에 발생한다.", a: true, e: "동시에 발생하지만 빛이 소리보다 빨라 번개가 먼저 보입니다." },
-        { q: "화성에는 물이 전혀 없다.", a: false, e: "화성에는 극지방에 얼음 형태의 물이 존재합니다." },
-        { q: "모든 금속은 자석에 붙는다.", a: false, e: "철, 니켈, 코발트 등 일부 금속만 자석에 붙습니다." },
-        { q: "빛은 직진한다.", a: true, e: "빛은 균일한 매질에서 직진합니다." },
-        { q: "지구의 나이는 약 46억 년이다.", a: true, e: "지구는 약 45.4억 년 전에 형성되었습니다." },
-        { q: "구름은 수증기로 이루어져 있다.", a: false, e: "구름은 수증기가 아닌 작은 물방울이나 얼음 결정입니다." },
-        { q: "중력은 지구에서만 작용한다.", a: false, e: "중력은 질량을 가진 모든 물체 사이에 작용합니다." },
-        { q: "식물의 광합성에는 빛이 필요하다.", a: true, e: "광합성은 빛 에너지를 이용해 포도당을 만드는 과정입니다." },
-        { q: "수소는 가장 가벼운 원소이다.", a: true, e: "수소는 원자번호 1번으로 가장 가벼운 원소입니다." },
-        { q: "지진은 지구 내부의 판이 움직여서 발생한다.", a: true, e: "지각판의 이동과 충돌로 지진이 발생합니다." },
-        { q: "밤하늘의 별은 모두 태양과 같은 항성이다.", a: true, e: "맨눈으로 보이는 별은 대부분 스스로 빛나는 항성입니다." },
-    ]},
-    geography: { name: '🌍 지리', icon: '🌍', questions: [
-        { q: "세계에서 가장 큰 대륙은 아시아이다.", a: true, e: "아시아는 면적 약 4,457만 km²로 가장 큰 대륙입니다." },
-        { q: "나일강은 세계에서 가장 긴 강이다.", a: true, e: "나일강은 약 6,650km로 세계 최장 강입니다." },
-        { q: "호주는 남반구에 위치한다.", a: true, e: "호주는 남반구에 있는 대륙 국가입니다." },
-        { q: "에베레스트산은 아프리카에 있다.", a: false, e: "에베레스트산은 아시아 히말라야 산맥에 있습니다." },
-        { q: "러시아는 세계에서 면적이 가장 큰 나라이다.", a: true, e: "러시아는 약 1,710만 km²로 세계 최대 면적 국가입니다." },
-        { q: "사하라 사막은 남아메리카에 있다.", a: false, e: "사하라 사막은 아프리카 북부에 있습니다." },
-        { q: "일본은 섬나라이다.", a: true, e: "일본은 약 6,800개의 섬으로 이루어진 섬나라입니다." },
-        { q: "아마존 열대우림은 아프리카에 있다.", a: false, e: "아마존 열대우림은 남아메리카에 있습니다." },
-        { q: "태평양은 대서양보다 크다.", a: true, e: "태평양은 지구 표면의 약 1/3을 차지하는 가장 큰 대양입니다." },
-        { q: "캐나다는 미국보다 면적이 크다.", a: true, e: "캐나다는 약 998만 km²로 미국보다 큽니다." },
-        { q: "이집트의 수도는 카이로이다.", a: true, e: "이집트의 수도는 카이로입니다." },
-        { q: "남극은 대륙이다.", a: true, e: "남극은 대륙 위에 얼음이 덮인 형태입니다." },
-        { q: "아프리카에는 54개 나라가 있다.", a: true, e: "아프리카 대륙에는 54개 국가가 있습니다." },
-        { q: "그린란드는 아프리카보다 크다.", a: false, e: "메르카토르 도법의 왜곡이며, 아프리카가 14배 더 큽니다." },
-        { q: "하와이는 아시아에 속한다.", a: false, e: "하와이는 미국의 주로 태평양에 위치합니다." },
-        { q: "지중해는 대서양과 연결되어 있다.", a: true, e: "지브롤터 해협을 통해 대서양과 연결됩니다." },
-        { q: "몽골은 바다가 없는 내륙국이다.", a: true, e: "몽골은 바다와 접하지 않는 내륙국입니다." },
-        { q: "브라질은 남아메리카에서 가장 큰 나라이다.", a: true, e: "브라질은 남미 면적의 약 47%를 차지합니다." },
-        { q: "영국은 섬나라이다.", a: true, e: "영국은 그레이트브리튼 섬에 위치한 섬나라입니다." },
-        { q: "중국의 인구는 세계 1위이다.", a: false, e: "2023년 기준 인도가 세계 1위입니다." },
-        { q: "스위스는 바다가 없는 나라이다.", a: true, e: "스위스는 유럽 내륙에 위치한 내륙국입니다." },
-        { q: "호주의 수도는 시드니이다.", a: false, e: "호주의 수도는 캔버라입니다." },
-        { q: "적도는 아프리카를 지나간다.", a: true, e: "적도는 아프리카 중부를 가로지릅니다." },
-        { q: "뉴질랜드는 호주의 일부이다.", a: false, e: "뉴질랜드는 호주와 별개의 독립 국가입니다." },
-        { q: "세계에서 인구가 가장 많은 도시는 도쿄이다.", a: true, e: "도쿄 수도권은 약 3,700만 명으로 세계 최대입니다." },
-        { q: "아이슬란드는 항상 얼음으로 덮여 있다.", a: false, e: "아이슬란드는 이름과 달리 온천과 녹지가 많습니다." },
-        { q: "파나마 운하는 태평양과 대서양을 연결한다.", a: true, e: "파나마 운하는 두 대양을 연결하는 인공 수로입니다." },
-        { q: "터키는 아시아와 유럽에 걸쳐 있다.", a: true, e: "터키는 보스포루스 해협을 기준으로 두 대륙에 걸쳐 있습니다." },
-        { q: "사해는 바다이다.", a: false, e: "사해는 호수이며, 염분 농도가 매우 높습니다." },
-        { q: "알래스카는 미국 영토이다.", a: true, e: "알래스카는 1867년 러시아에서 구입한 미국의 주입니다." },
-        { q: "아마존강은 세계에서 가장 긴 강이다.", a: false, e: "가장 긴 강은 나일강이며, 아마존은 유량이 가장 많습니다." },
-        { q: "북극에는 대륙이 있다.", a: false, e: "북극은 바다 위의 얼음이며, 남극과 달리 대륙이 없습니다." },
-        { q: "인도는 아시아에 있다.", a: true, e: "인도는 남아시아에 위치한 국가입니다." },
-        { q: "이탈리아는 장화 모양이다.", a: true, e: "이탈리아 반도는 장화 모양으로 유명합니다." },
-        { q: "바티칸은 세계에서 가장 작은 나라이다.", a: true, e: "바티칸 시국은 면적 0.44km²로 세계 최소 국가입니다." },
-        { q: "히말라야 산맥은 아직도 높아지고 있다.", a: true, e: "인도판과 유라시아판의 충돌로 매년 약 5mm씩 높아집니다." },
-        { q: "멕시코는 남아메리카에 있다.", a: false, e: "멕시코는 북아메리카에 위치합니다." },
-        { q: "나이아가라 폭포는 미국과 캐나다 국경에 있다.", a: true, e: "나이아가라 폭포는 미국-캐나다 국경에 위치합니다." },
-        { q: "지구의 표면 중 바다가 차지하는 비율은 약 70%이다.", a: true, e: "지구 표면의 약 71%가 바다입니다." },
-        { q: "독일의 수도는 뮌헨이다.", a: false, e: "독일의 수도는 베를린입니다." },
-        { q: "킬리만자로산은 아시아에 있다.", a: false, e: "킬리만자로산은 아프리카 탄자니아에 있습니다." },
-        { q: "대서양은 태평양보다 깊다.", a: false, e: "태평양의 최대 수심(마리아나 해구)이 더 깊습니다." },
-        { q: "필리핀은 7000개 이상의 섬으로 이루어져 있다.", a: true, e: "필리핀은 약 7,641개의 섬으로 구성되어 있습니다." },
-        { q: "시베리아는 러시아에 있다.", a: true, e: "시베리아는 러시아 동부의 광대한 지역입니다." },
-        { q: "수에즈 운하는 아시아와 아프리카를 분리한다.", a: true, e: "수에즈 운하는 아시아와 아프리카 대륙의 경계입니다." },
-        { q: "세계에서 가장 큰 섬은 호주이다.", a: false, e: "호주는 대륙으로 분류되며, 가장 큰 섬은 그린란드입니다." },
-        { q: "남아메리카에서 가장 긴 강은 아마존강이다.", a: true, e: "아마존강은 남미에서 가장 긴 강입니다." },
-        { q: "유럽에서 가장 큰 나라는 프랑스이다.", a: false, e: "유럽에서 가장 큰 나라는 러시아(유럽 부분 포함)입니다." },
-        { q: "마다가스카르는 아프리카 동쪽에 있는 섬이다.", a: true, e: "마다가스카르는 아프리카 동남쪽 인도양에 위치한 섬나라입니다." },
-        { q: "적도를 지나는 나라에는 눈이 내리지 않는다.", a: false, e: "적도 부근이라도 고산지대에서는 눈이 내립니다." },
-    ]},
+    science: { name: '🔬 과학', file: 'questions/science.json' },
+    geography: { name: '🌍 지리', file: 'questions/geography.json' },
+    history: { name: '📜 역사', file: 'questions/history.json' },
+    culture: { name: '🎨 문화/예술', file: 'questions/culture.json' },
+    daily: { name: '💡 생활상식', file: 'questions/daily.json' },
+    tech: { name: '💻 IT/기술', file: 'questions/tech.json' },
+    animal: { name: '🐾 동물/자연', file: 'questions/animal.json' },
+    korea: { name: '🇰🇷 한국상식', file: 'questions/korea.json' },
+    food: { name: '🍽️ 음식/요리', file: 'questions/food.json' },
+    body: { name: '🏥 인체/건강', file: 'questions/body.json' },
+    math: { name: '🔢 수학/논리', file: 'questions/math.json' },
+    entertainment: { name: '⭐ 연예/엔터', file: 'questions/entertainment.json' },
+    sports: { name: '⚽ 스포츠', file: 'questions/sports.json' },
+    adult: { name: '🍺 성인상식', file: 'questions/adult.json' },
+};
+
+// 게임 상태
+const MAX_LIVES = 5;
+let questions = [];
+let currentIdx = 0;
+let lives = MAX_LIVES;
+let score = 0;
+let answered = false;
+let correctCount = 0;
+let selectedCategory = null;
+
+// 셔플 함수
+function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
+// 분야 선택 화면 표시
+function showTitle() {
+    document.getElementById('title-screen').style.display = 'flex';
+    document.getElementById('game-container').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'none';
+}
+
+// 분야 선택 후 게임 시작
+async function selectCategory(catKey) {
+    SFX.init();
+    SFX.resume();
+    SFX.clickSound();
+
+    selectedCategory = catKey;
+    const cat = CATEGORIES[catKey];
+
+    // JSON 파일에서 문제 로드
+    try {
+        const res = await fetch(cat.file);
+        if (!res.ok) throw new Error('파일 로드 실패');
+        const allQuestions = await res.json();
+        questions = shuffle(allQuestions).slice(0, 50);
+    } catch (e) {
+        alert('문제를 불러오는데 실패했습니다. 다시 시도해주세요.');
+        return;
+    }
+
+    currentIdx = 0;
+    lives = MAX_LIVES;
+    score = 0;
+    correctCount = 0;
+    answered = false;
+
+    SFX.startBGM();
+    document.getElementById('title-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'none';
+    document.getElementById('game-container').style.display = 'flex';
+    document.getElementById('category-label').textContent = cat.name;
+    updateUI();
+    showQuestion();
+}
+
+// 문제 표시
+function showQuestion() {
+    answered = false;
+    const q = questions[currentIdx];
+    document.getElementById('question-number').textContent = `Q${currentIdx + 1}.`;
+    document.getElementById('question-text').textContent = q.q;
+    document.getElementById('explanation').textContent = '';
+    document.getElementById('explanation').classList.remove('show');
+    document.getElementById('btn-o').classList.remove('disabled');
+    document.getElementById('btn-x').classList.remove('disabled');
+    updateUI();
+}
+
+// 답변 처리
+function answer(userAnswer) {
+    if (answered) return;
+    answered = true;
+
+    SFX.init();
+    SFX.resume();
+    SFX.clickSound();
+
+    const q = questions[currentIdx];
+    const correct = (userAnswer === q.a);
+
+    document.getElementById('btn-o').classList.add('disabled');
+    document.getElementById('btn-x').classList.add('disabled');
+
+    const feedback = document.getElementById('feedback');
+    if (correct) {
+        score += 10;
+        correctCount++;
+        feedback.textContent = '⭕';
+        feedback.style.color = '#0e6';
+        feedback.style.textShadow = '0 0 30px #0e6';
+        setTimeout(() => SFX.correctSound(), 100);
+    } else {
+        lives--;
+        feedback.textContent = '❌';
+        feedback.style.color = '#f44';
+        feedback.style.textShadow = '0 0 30px #f44';
+        setTimeout(() => SFX.wrongSound(), 100);
+    }
+    feedback.classList.add('show');
+
+    const explanation = document.getElementById('explanation');
+    explanation.textContent = (correct ? '✅ 정답! ' : '❌ 오답! ') + q.e;
+    explanation.classList.add('show');
+
+    updateUI();
+
+    setTimeout(() => {
+        feedback.classList.remove('show');
+        if (lives <= 0) { showResult(false); return; }
+        if (currentIdx >= questions.length - 1) { showResult(true); return; }
+        currentIdx++;
+        showQuestion();
+    }, 1800);
+}
+
+// UI 업데이트
+function updateUI() {
+    const heartsStr = '❤️'.repeat(lives) + '🖤'.repeat(MAX_LIVES - lives);
+    document.getElementById('lives').textContent = heartsStr;
+    document.getElementById('progress').textContent = `${currentIdx + 1} / ${questions.length}`;
+    document.getElementById('score').textContent = `${score}점`;
+}
+
+// 결과 화면
+function showResult(cleared) {
+    SFX.stopBGM();
+    document.getElementById('game-container').style.display = 'none';
+    const resultScreen = document.getElementById('result-screen');
+    const title = document.getElementById('result-title');
+    const stats = document.getElementById('result-stats');
+
+    if (cleared) {
+        title.textContent = '🎉 축하합니다!';
+        title.style.color = '#0f0';
+        setTimeout(() => SFX.clearSound(), 300);
+    } else {
+        title.textContent = '💀 GAME OVER';
+        title.style.color = '#f44';
+        setTimeout(() => SFX.gameOverSound(), 300);
+    }
+
+    const catName = CATEGORIES[selectedCategory] ? CATEGORIES[selectedCategory].name : '';
+    stats.innerHTML = `
+        분야: ${catName}<br>
+        정답: ${correctCount}문제 / ${currentIdx + 1}문제<br>
+        점수: ${score}점<br>
+        ${cleared ? '50문제 완주 성공!' : `${currentIdx + 1}번째 문제에서 탈락`}
+    `;
+    resultScreen.style.display = 'flex';
+}
+
+// 전체화면
+function goFullscreen() {
+    const el = document.documentElement;
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (rfs) {
+        rfs.call(el).then(() => {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(() => {});
+            }
+        }).catch(() => {});
+    }
+}
+
+// 모바일 감지 시 첫 터치에 전체화면
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window);
+if (isMobile) {
+    document.addEventListener('touchstart', function onFirstTouch() {
+        goFullscreen();
+        document.removeEventListener('touchstart', onFirstTouch);
+    }, { once: true });
+}
+
+// 뮤트 토글
+function toggleMute() {
+    SFX.init();
+    const muted = SFX.toggleMute();
+    document.getElementById('mute-btn').textContent = muted ? '🔇' : '🔊';
+}
