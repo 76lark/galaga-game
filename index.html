@@ -130,13 +130,16 @@
         }
         #retry-btn:active { transform: scale(0.95); }
 
-        /* 뮤트 버튼 */
-        #mute-btn {
-            position: fixed; top: 12px; right: 16px; width: 36px; height: 36px;
+        /* 뮤트/홈 버튼 (info-bar 내부) */
+        .info-buttons {
+            display: flex; gap: 8px; align-items: center;
+        }
+        #mute-btn, #home-btn {
+            width: 32px; height: 32px;
             border-radius: 50%; background: rgba(255,255,255,0.08);
             border: 1px solid rgba(255,255,255,0.2); color: #fff;
-            font-size: 18px; display: flex; align-items: center;
-            justify-content: center; cursor: pointer; z-index: 60;
+            font-size: 16px; display: flex; align-items: center;
+            justify-content: center; cursor: pointer;
             -webkit-tap-highlight-color: transparent;
         }
     </style>
@@ -173,9 +176,13 @@
     <!-- 게임 화면 -->
     <div id="game-container">
         <div id="info-bar">
-            <div class="lives" id="lives">❤️❤️❤️❤️❤️</div>
-            <div class="progress" id="progress">1 / 20</div>
+            <div class="lives" id="lives">❤️❤️❤️❤️</div>
+            <div class="progress" id="progress">1 / 50</div>
             <div class="score" id="score">0점</div>
+            <div class="info-buttons">
+                <div id="home-btn" onclick="quitGame()">🏠</div>
+                <div id="mute-btn" onclick="toggleMute()">🔊</div>
+            </div>
         </div>
         <div id="category-label"></div>
         <div id="question-area">
@@ -196,9 +203,6 @@
         <div class="stats" id="result-stats"></div>
         <button id="retry-btn" onclick="showTitle()">다시 하기</button>
     </div>
-
-    <!-- 뮤트 버튼 -->
-    <div id="mute-btn" onclick="toggleMute()">🔊</div>
 
     <script src="questions/science.js"></script>
     <script src="questions/geography.js"></script>

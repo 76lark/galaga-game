@@ -20,7 +20,7 @@ const CATEGORIES = {
 };
 
 // 게임 상태
-const MAX_LIVES = 5;
+const MAX_LIVES = 4;
 let questions = [];
 let currentIdx = 0;
 let lives = MAX_LIVES;
@@ -41,9 +41,18 @@ function shuffle(arr) {
 
 // 분야 선택 화면 표시
 function showTitle() {
+    SFX.stopBGM();
     document.getElementById('title-screen').style.display = 'flex';
     document.getElementById('game-container').style.display = 'none';
     document.getElementById('result-screen').style.display = 'none';
+}
+
+// 게임 중단하고 첫 화면으로
+function quitGame() {
+    if (confirm('게임을 중단하고 첫 화면으로 돌아갈까요?')) {
+        SFX.stopBGM();
+        showTitle();
+    }
 }
 
 // 분야 선택 후 게임 시작
