@@ -3,20 +3,20 @@
 // ============================================
 
 const CATEGORIES = {
-    science: { name: '🔬 과학', file: 'questions/science.json' },
-    geography: { name: '🌍 지리', file: 'questions/geography.json' },
-    history: { name: '📜 역사', file: 'questions/history.json' },
-    culture: { name: '🎨 문화/예술', file: 'questions/culture.json' },
-    daily: { name: '💡 생활상식', file: 'questions/daily.json' },
-    tech: { name: '💻 IT/기술', file: 'questions/tech.json' },
-    animal: { name: '🐾 동물/자연', file: 'questions/animal.json' },
-    korea: { name: '🇰🇷 한국상식', file: 'questions/korea.json' },
-    food: { name: '🍽️ 음식/요리', file: 'questions/food.json' },
-    body: { name: '🏥 인체/건강', file: 'questions/body.json' },
-    math: { name: '🔢 수학/논리', file: 'questions/math.json' },
-    entertainment: { name: '⭐ 연예/엔터', file: 'questions/entertainment.json' },
-    sports: { name: '⚽ 스포츠', file: 'questions/sports.json' },
-    adult: { name: '🍺 성인상식', file: 'questions/adult.json' },
+    science: { name: '🔬 과학', data: () => QUESTIONS_SCIENCE },
+    geography: { name: '🌍 지리', data: () => QUESTIONS_GEOGRAPHY },
+    history: { name: '📜 역사', data: () => QUESTIONS_HISTORY },
+    culture: { name: '🎨 문화/예술', data: () => QUESTIONS_CULTURE },
+    daily: { name: '💡 생활상식', data: () => QUESTIONS_DAILY },
+    tech: { name: '💻 IT/기술', data: () => QUESTIONS_TECH },
+    animal: { name: '🐾 동물/자연', data: () => QUESTIONS_ANIMAL },
+    korea: { name: '🇰🇷 한국상식', data: () => QUESTIONS_KOREA },
+    food: { name: '🍽️ 음식/요리', data: () => QUESTIONS_FOOD },
+    body: { name: '🏥 인체/건강', data: () => QUESTIONS_BODY },
+    math: { name: '🔢 수학/논리', data: () => QUESTIONS_MATH },
+    entertainment: { name: '⭐ 연예/엔터', data: () => QUESTIONS_ENTERTAINMENT },
+    sports: { name: '⚽ 스포츠', data: () => QUESTIONS_SPORTS },
+    adult: { name: '🍺 성인상식', data: () => QUESTIONS_ADULT },
 };
 
 // 게임 상태
@@ -47,7 +47,7 @@ function showTitle() {
 }
 
 // 분야 선택 후 게임 시작
-async function selectCategory(catKey) {
+function selectCategory(catKey) {
     SFX.init();
     SFX.resume();
     SFX.clickSound();
@@ -55,16 +55,13 @@ async function selectCategory(catKey) {
     selectedCategory = catKey;
     const cat = CATEGORIES[catKey];
 
-    // JSON 파일에서 문제 로드
-    try {
-        const res = await fetch(cat.file);
-        if (!res.ok) throw new Error('파일 로드 실패');
-        const allQuestions = await res.json();
-        questions = shuffle(allQuestions).slice(0, 50);
-    } catch (e) {
-        alert('문제를 불러오는데 실패했습니다. 다시 시도해주세요.');
+    // 전역 변수에서 문제 로드
+    const allQuestions = cat.data();
+    if (!allQuestions || allQuestions.length === 0) {
+        alert('문제를 불러오는데 실패했습니다.');
         return;
     }
+    questions = shuffle(allQuestions).slice(0, 50);
 
     currentIdx = 0;
     lives = MAX_LIVES;
